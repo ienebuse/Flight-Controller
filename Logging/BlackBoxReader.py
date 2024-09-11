@@ -37,7 +37,7 @@ TimeOut_Period = 10
 
 # ser = serial.Serial('COM9', 9600)
 # ser = serial.Serial('COM9', 115200)
-ser = serial.Serial('COM15', 256000)
+ser = serial.Serial('COM16', 256000)
 
 should_stop = False
 
@@ -105,7 +105,13 @@ def processData(rxData):
     calcCRC = calculate_checksum(rxData[:-1])
     if(rxCRC == calcCRC):  
         t,id, R, P, Y, M1, M2, M3, M4,chR, chP,chT, chY, SL1, SL2, SR2, SR1, ofVx, ofVy, ofH, bat, alt, lat, lon, hMSL = struct.unpack('<IB3f4f4f4h3f5f',bytearray(rxData[:-1]))
-        BLACKBOX_DATA.append([t,id, R, P, Y, M1, M2, M3, M4,chR, chP,chT, chY, SL1, SL2, SR2, SR1, ofVx, ofVy, ofH, bat, alt, lat, lon, hMSL])
+        
+        tPID = (M1 + M2 + M3 + M4)/4
+        rPID = (M1 - M2 + M3 - M4)/4
+        pPID = (M1 + M2 - M3 - M4)/4
+        yPID = (M1 - M2 - M3 + M4)/4
+        
+        BLACKBOX_DATA.append([t,id, R, P, Y, M1, M2, M3, M4,chR, chP,chT, chY, SL1, SL2, SR2, SR1, ofVx, ofVy, ofH, bat, alt, lat, lon, hMSL, tPID, rPID, pPID, yPID])
         print(f'log size: {len(BLACKBOX_DATA)}               ', end='\r')
         if(id == 0xD8):
             write_file()
