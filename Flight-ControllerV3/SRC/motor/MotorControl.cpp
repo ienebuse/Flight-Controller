@@ -184,11 +184,13 @@ void MotorControl::run(Attitude currentAttitude,  Channel* rxCh, timetick_us cur
 		}
 		else if(rxCh->SR1 > 40 && rxCh->SR1 < 60) {
 			controlType = CONTROL_RATE;
-			m_throttlePid.updateSetpoint(rxCh->throttle, PID_THROTTLE);
+//			m_throttlePid.updateSetpoint(rxCh->throttle, PID_THROTTLE);
+			m_throttlePid.updateSetpoint(HOVER_HEIGHT, PID_THROTTLE);
 		}
 		else {
 			controlType = CONTROL_POS;
-			m_throttlePid.updateSetpoint(rxCh->throttle, PID_THROTTLE);
+//			m_throttlePid.updateSetpoint(rxCh->throttle, PID_THROTTLE);
+			m_throttlePid.updateSetpoint(HOVER_HEIGHT, PID_THROTTLE);
 		}
 
 
@@ -215,9 +217,11 @@ void MotorControl::run(Attitude currentAttitude,  Channel* rxCh, timetick_us cur
 		float pitchPid = m_pid[PITCH].run(pitchAngle, pitchRate, controlType, PID_PITCH, MODE_D_LOOP, dT);
 		float yawPid = m_pid[YAW].run(yawAngle, yawRate, controlType, PID_YAW, MODE_D_LOOP, dT);
 
-//		if(currentTime - lastHeightControl > 20000) {
+		if(currentTime - lastHeightControl > 20000) {
 			throttle = m_throttlePid.run(height, -heightRate, CONTROL_POS, PID_THROTTLE, MODE_S_LOOP, dT);
-//		}
+			tPID = throttle;
+
+		}
 		/*
 		 * 	M4				 M2
 		 *  cw *          *  ccw
@@ -230,15 +234,15 @@ void MotorControl::run(Attitude currentAttitude,  Channel* rxCh, timetick_us cur
 		*/
 
 
-//		m1 = rxCh->throttle - pitchPid + rollPid + yawPid;
-//		m2 = rxCh->throttle + pitchPid + rollPid - yawPid;
-//		m3 = rxCh->throttle - pitchPid - rollPid - yawPid;
-//		m4 = rxCh->throttle + pitchPid - rollPid + yawPid;
+		m1 = rxCh->throttle - pitchPid + rollPid + yawPid;
+		m2 = rxCh->throttle + pitchPid + rollPid - yawPid;
+		m3 = rxCh->throttle - pitchPid - rollPid - yawPid;
+		m4 = rxCh->throttle + pitchPid - rollPid + yawPid;
 
-		m1 = throttle - pitchPid + rollPid + yawPid;
-		m2 = throttle + pitchPid + rollPid - yawPid;
-		m3 = throttle - pitchPid - rollPid - yawPid;
-		m4 = throttle + pitchPid - rollPid + yawPid;
+//		m1 = throttle - pitchPid + rollPid + yawPid;
+//		m2 = throttle + pitchPid + rollPid - yawPid;
+//		m3 = throttle - pitchPid - rollPid - yawPid;
+//		m4 = throttle + pitchPid - rollPid + yawPid;
 
 		m1 = motorConstraint(m1);
 		m2 = motorConstraint(m2);
@@ -251,6 +255,14 @@ void MotorControl::run(Attitude currentAttitude,  Channel* rxCh, timetick_us cur
 		else {
 			setMotorsSpeed(m1*MOTOR_LIMIT_SCALE, m2*MOTOR_LIMIT_SCALE, m3*MOTOR_LIMIT_SCALE, m4*MOTOR_LIMIT_SCALE);
 		}
+
+		m_pidVals.throttle = throttle;
+		m_pidVals.roll = rollPid;
+		m_pidVals.pitch = pitchPid;
+		m_pidVals.yaw = yawPid;
+		m_pidVals.pos_y = rollAngle;
+		m_pidVals.pos_x = pitchAngle;
+
 
 //		return m_motor;
 	}

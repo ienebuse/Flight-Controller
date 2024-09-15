@@ -63,7 +63,7 @@ def calculate_checksum(data):
     return crc
 
 
-LOG_DATA_SIZE = 90
+LOG_DATA_SIZE = 114
 RX_DATA_SIZE = LOG_DATA_SIZE + 1
 BLACKBOX_DATA = []
 
@@ -93,25 +93,25 @@ def signal_handler(sig, frame):
 signal.signal(signal.SIGINT, signal_handler)    
 
 
-R = P = Y = heading = dT = M1 = M2 = M3 = M4 = Rp = Ri = Rd  = Pp = Pi = Pd = Yp = Yi = Yd = chR = chP =chT = chY = SL1 = SL2 = SR2 = SR1 = ofVx = ofVy = ofH = bat = alt = lat = lon = hMSL = 0
+R = P = Y = heading = dT = M1 = M2 = M3 = M4 = pX = pY = pR = pP = pYw = pT = Rp = Ri = Rd  = Pp = Pi = Pd = Yp = Yi = Yd = chR = chP =chT = chY = SL1 = SL2 = SR2 = SR1 = ofVx = ofVy = ofH = bat = alt = lat = lon = hMSL = 0
 t2 = 0
 first = True
 def processData(rxData):
-    global t2, should_stop,BLACKBOX_DATA, dataRdy, R, P, Y, heading, dT, M1, M2, M3, M4, Rp, Ri, Rd , Pp, Pi, Pd, Yp, Yi, Yd, chR, chP,chT, chY, SL1, SL2, SR2, SR1, ofVx, ofVy, ofH, bat, alt, lat, lon, hMSL
+    global t2, should_stop,BLACKBOX_DATA, dataRdy, R, P, Y, heading, dT, M1, M2, M3, M4, pX, pY, pR, pP, pYw, pT, Rp, Ri, Rd , Pp, Pi, Pd, Yp, Yi, Yd, chR, chP,chT, chY, SL1, SL2, SR2, SR1, ofVx, ofVy, ofH, bat, alt, lat, lon, hMSL
     
     if(len(rxData) != LOG_DATA_SIZE):
         return
     rxCRC = rxData[-1]
     calcCRC = calculate_checksum(rxData[:-1])
     if(rxCRC == calcCRC):  
-        t,id, R, P, Y, M1, M2, M3, M4,chR, chP,chT, chY, SL1, SL2, SR2, SR1, ofVx, ofVy, ofH, bat, alt, lat, lon, hMSL = struct.unpack('<IB3f4f4f4h3f5f',bytearray(rxData[:-1]))
+        t,id, R, P, Y, M1, M2, M3, M4, pX, pY, pR, pP, pYw, pT, chR, chP,chT, chY, SL1, SL2, SR2, SR1, ofVx, ofVy, ofH, bat, alt, lat, lon, hMSL = struct.unpack('<IB3f4f6f4f4h3f5f',bytearray(rxData[:-1]))
         
-        tPID = (M1 + M2 + M3 + M4)/4
-        rPID = (M1 - M2 + M3 - M4)/4
-        pPID = (M1 + M2 - M3 - M4)/4
-        yPID = (M1 - M2 - M3 + M4)/4
+        # tPID = (M1 + M2 + M3 + M4)/4
+        # rPID = (M1 - M2 + M3 - M4)/4
+        # pPID = (M1 + M2 - M3 - M4)/4
+        # yPID = (M1 - M2 - M3 + M4)/4
         
-        BLACKBOX_DATA.append([t,id, R, P, Y, M1, M2, M3, M4,chR, chP,chT, chY, SL1, SL2, SR2, SR1, ofVx, ofVy, ofH, bat, alt, lat, lon, hMSL, tPID, rPID, pPID, yPID])
+        BLACKBOX_DATA.append([t,id, R, P, Y, M1, M2, M3, M4, chR, chP,chT, chY, SL1, SL2, SR2, SR1, ofVx, ofVy, ofH, bat, alt, lat, lon, hMSL, pT, pR, pP, pYw, pX, pY])
         print(f'log size: {len(BLACKBOX_DATA)}               ', end='\r')
         if(id == 0xD8):
             write_file()

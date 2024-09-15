@@ -93,6 +93,8 @@ class Ui_MainWindow(object):
         self.paramList.addItem("")
         self.paramList.addItem("")
         self.paramList.addItem("")
+        self.paramList.addItem("")
+        self.paramList.addItem("")
         self.frame_3 = QtWidgets.QFrame(self.tab)
         self.frame_3.setGeometry(QtCore.QRect(139, 10, 221, 92))
         self.frame_3.setFrameShape(QtWidgets.QFrame.StyledPanel)
@@ -537,6 +539,7 @@ class Ui_MainWindow(object):
         self.mtrScale.addItem("")
         self.label = QtWidgets.QLabel(self.centralwidget)
         self.label.setGeometry(QtCore.QRect(340, 380, 47, 13))
+        self.label.setText("")
         self.label.setObjectName("label")
         self.frame_4.raise_()
         self.frame.raise_()
@@ -595,6 +598,8 @@ class Ui_MainWindow(object):
         self.paramList.setItemText(24, _translate("MainWindow", "Roll PID"))
         self.paramList.setItemText(25, _translate("MainWindow", "Pitch PID"))
         self.paramList.setItemText(26, _translate("MainWindow", "Yaw PID"))
+        self.paramList.setItemText(27, _translate("MainWindow", "PitchAngle PID"))
+        self.paramList.setItemText(28, _translate("MainWindow", "RollAngle PID"))
         self.label_24.setText(_translate("MainWindow", "None"))
         self.label_26.setText(_translate("MainWindow", "Plot 1"))
         self.label_27.setText(_translate("MainWindow", "Plot 2"))
@@ -609,7 +614,6 @@ class Ui_MainWindow(object):
         self.mtrScale.setItemText(0, _translate("MainWindow", "0.5"))
         self.mtrScale.setItemText(1, _translate("MainWindow", "1"))
         self.mtrScale.setItemText(2, _translate("MainWindow", "2"))
-        self.label.setText(_translate("MainWindow", "TextLabel"))
 
 
 if __name__ == "__main__":

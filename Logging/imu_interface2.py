@@ -302,7 +302,8 @@ def simulate_block_motion(interval):
         vertices = rotate_block(original_vertices, R, P, Y)
         plot_block(ax, vertices, colors)
         try:
-            print(f"Frame {i}: R={R:.2f},\t P={P:.2f},\t Y={Y:.2f},\t Heading={heading:.1f},\t dT={dT:.6f}\t M1:{M1:.1f}   M2:{M2:.1f}   M3:{M3:.1f}   M4:{M4:.1f}  R:[{Rp:.3f} | {Ri:.3f} | {Rd:.3f}]   P:[{Pp:.3f} | {Pi:.3f} | {Pd:.3f}]    Y:[{Yp:.3f} | {Yi:.3f} | {Yd:.3f}]\t bat:{bat:.1f}  H:{alt:.3f} lat:{lat:.3f} | lon:{lon:.3f} | hMSL:{hMSL:.3f}     vx:{ofVx:.3f} | vy:{ofVy:.3f} | h:{ofH:.3f}          ", end='\r')
+            print(f"Frame {i}: R={R:.2f},\t P={P:.2f},\t Y={Y:.2f},\t Heading={heading:.1f},\t dT={dT:.6f}\t M1:{M1:.1f}   M2:{M2:.1f}   M3:{M3:.1f}   M4:{M4:.1f}\t bat:{bat:.1f}  H:{alt:.3f} lat:{lat:.3f} | lon:{lon:.3f} | hMSL:{hMSL:.3f}     vx:{ofVx:.3f} | vy:{ofVy:.3f} | h:{ofH:.3f}          ", end='\r')
+            # print(f"Frame {i}: R={R:.2f},\t P={P:.2f},\t Y={Y:.2f},\t Heading={heading:.1f},\t dT={dT:.6f}\t M1:{M1:.1f}   M2:{M2:.1f}   M3:{M3:.1f}   M4:{M4:.1f}  R:[{Rp:.3f} | {Ri:.3f} | {Rd:.3f}]   P:[{Pp:.3f} | {Pi:.3f} | {Pd:.3f}]    Y:[{Yp:.3f} | {Yi:.3f} | {Yd:.3f}]\t bat:{bat:.1f}  H:{alt:.3f} lat:{lat:.3f} | lon:{lon:.3f} | hMSL:{hMSL:.3f}     vx:{ofVx:.3f} | vy:{ofVy:.3f} | h:{ofH:.3f}          ", end='\r')
             # print(f"Frame {i}: R={R:.2f},\t P={P:.2f},\t Y={Y:.2f},\t Heading={heading:.1f},\t dT={dT:.6f}\t M1:{M1:.1f}   M2:{M2:.1f}   M3:{M3:.1f}   M4:{M4:.1f}   \
             #       R:[{Rp:.3f} | {Ri:.3f} | {Rd:.3f}]   P:[{Pp:.3f} | {Pi:.3f} | {Pd:.3f}]    Y:[{Yp:.3f} | {Yi:.3f} | {Yd:.3f}]\t bat:{bat:.1f}  H:{alt:.3f}   \
             #         lat:{lat:.3f} | lon:{lon:.3f} | hMSL:{hMSL:.3f}     vx:{ofVx:.3f} | vy:{ofVy:.3f} | h:{ofH:.3f}          ", end='\r')
@@ -316,7 +317,7 @@ def simulate_block_motion(interval):
     def updateLine(i):
         global Roll, Pitch, Yaw, Heading ,dataRdy, R, P, Y, heading, dT, M1, M2, M3, M4, Rp, Ri, Rd , Pp, Pi, Pd, Yp, Yi, Yd, chR, chP,chT, chY, SL1, SL2, SR2, SR1, ofVx, ofVy, ofH, bat, alt, lat, lon, hMSL
         # Get new data point (replace this with your actual data source)        
-        
+        tPID = (M1 + M2 + M3 + M4)/4
         # Update data
 
         # Roll.append(ofVx)
@@ -326,8 +327,8 @@ def simulate_block_motion(interval):
 
         Roll.append(M1)
         Pitch.append(M2)
-        Yaw.append(M3)
-        Heading.append(M4)
+        Yaw.append(M4)
+        Heading.append(tPID)
 
 
         Roll = Roll[1:]#.pop(0)
@@ -398,7 +399,9 @@ def simulate_block_motion(interval):
         
 
         try:
-            print(f"Frame {i}: R={R:.2f},\t P={P:.2f},\t Y={Y:.2f},\t Heading={heading:.1f},\t dT={dT:.6f}\t M1:{M1:.1f}   M2:{M2:.1f}   M3:{M3:.1f}   M4:{M4:.1f}  R:[{Rp:.3f} | {Ri:.3f} | {Rd:.3f}]   P:[{Pp:.3f} | {Pi:.3f} | {Pd:.3f}]    Y:[{Yp:.3f} | {Yi:.3f} | {Yd:.3f}]\t bat:{bat:.1f}  H:{alt:.3f} lat:{lat:.3f} | lon:{lon:.3f} | hMSL:{hMSL:.3f}     vx:{ofVx:.3f} | vy:{ofVy:.3f} | h:{ofH:.3f}          ", end='\r')
+            
+            print(f"Frame {i}: R={R:.2f},\t P={P:.2f},\t Y={Y:.2f},\t Hd={heading:.1f},\t dT={dT:.6f}\t M1:{M1:.1f}   M2:{M2:.1f}   M3:{M3:.1f}   M4:{M4:.1f}   tPID:{(float)(tPID):.1f}\tvx:{ofVx:.3f} | vy:{ofVy:.3f} | h:{ofH:.1f}    bat:{bat:.1f}  H:{alt:.3f} lat:{lat:.3f} | lon:{lon:.3f} | hMSL:{hMSL:.3f}          ", end='\r')
+            # print(f"Frame {i}: R={R:.2f},\t P={P:.2f},\t Y={Y:.2f},\t Heading={heading:.1f},\t dT={dT:.6f}\t M1:{M1:.1f}   M2:{M2:.1f}   M3:{M3:.1f}   M4:{M4:.1f}  R:[{Rp:.3f} | {Ri:.3f} | {Rd:.3f}]   P:[{Pp:.3f} | {Pi:.3f} | {Pd:.3f}]    Y:[{Yp:.3f} | {Yi:.3f} | {Yd:.3f}]\t bat:{bat:.1f}  H:{alt:.3f} lat:{lat:.3f} | lon:{lon:.3f} | hMSL:{hMSL:.3f}     vx:{ofVx:.3f} | vy:{ofVy:.3f} | h:{ofH:.3f}          ", end='\r')
         except:
             pass
 

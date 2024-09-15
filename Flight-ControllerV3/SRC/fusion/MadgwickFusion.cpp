@@ -31,7 +31,7 @@ bool MadgwickFusion::init()
 
     // Gain 0.7
 
-//    double rejectionTimeout = 10.0 / ((float)FLIGHT_CONTROL_PERIOD_US/1000000);
+//    double rejectionTimeout = 10.0 / ((float)IMU_SAMPLING_PERIOD_US/1000000);
 
     //FusionAhrsInitialise(&m_ahrs);
     const FusionAhrsSettings settings = {

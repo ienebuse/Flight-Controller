@@ -19,6 +19,7 @@ typedef struct __attribute__ ((packed)) {
 	uint8_t id = 0;
 	Euler att;
 	M_Speed mSpeed;
+	Pid_Vals pid;
 	Channel chState;
 	Vector_t<float> optFlw;
 	float battVoltage = 0;

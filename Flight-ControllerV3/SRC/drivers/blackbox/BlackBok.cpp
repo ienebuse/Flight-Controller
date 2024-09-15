@@ -92,8 +92,9 @@ BlackBox_Data BlackBok::getPacket(timetick_us currenTimeUs) {
 	m_logData.att = m_ahrs->getLog().euler;
 	m_logData.optFlw = m_optFlw->getFlowData();
 
-	ControlLog ctrlLog = m_motor->getLog();
+	ControlLog_t ctrlLog = m_motor->getBBxLog();
 	m_logData.mSpeed = ctrlLog.mSpeed;
+	m_logData.pid = ctrlLog.pid;
 	m_logData.chState = ctrlLog.chState;
 
 	m_logData.battVoltage = m_meter->getBatteryVoltage();

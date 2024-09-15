@@ -143,7 +143,7 @@ void Application::init(HAL_Devices_t *devices) {
 	m_scheduler.addTask(&m_blackBox);
 
 	m_ahrs.init(imuConfig1, imuConfig2, magConfig);
-	m_ahrs.setTaskInfo(FUSION_TASK, PRIORITY_REALTIME, PRIORITY_REALTIME, 0, FLIGHT_CONTROL_PERIOD_US);
+	m_ahrs.setTaskInfo(FUSION_TASK, PRIORITY_REALTIME, PRIORITY_REALTIME, 0, IMU_SAMPLING_PERIOD_US);
 	m_scheduler.addTask(&m_ahrs);
 
 	int i = 0;

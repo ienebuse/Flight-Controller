@@ -288,6 +288,16 @@
         <string>Yaw PID</string>
        </property>
       </item>
+      <item>
+       <property name="text">
+        <string>PitchAngle PID</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>RollAngle PID</string>
+       </property>
+      </item>
      </widget>
      <widget class="QFrame" name="frame_3">
       <property name="geometry">

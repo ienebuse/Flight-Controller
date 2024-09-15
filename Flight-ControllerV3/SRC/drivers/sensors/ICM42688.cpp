@@ -103,7 +103,7 @@ void ICM42688::calibrateGyro() {
 #if USE_GYRO_FILTER
 	for(int i = 0; i < 1000; i++) {
 		getGyroData();
-		TimeTick::delay_us(FLIGHT_CONTROL_PERIOD_US);
+		TimeTick::delay_us(IMU_SAMPLING_PERIOD_US);
 	}
 #endif
   // set at a lower range (more resolution) since IMU not moving
@@ -119,7 +119,7 @@ void ICM42688::calibrateGyro() {
     _gyroBD[0] += gyroData.x;
     _gyroBD[1] += gyroData.y;
     _gyroBD[2] += gyroData.z;
-    TimeTick::delay_us(FLIGHT_CONTROL_PERIOD_US);
+    TimeTick::delay_us(IMU_SAMPLING_PERIOD_US);
   }
   m_gyrB[0] = _gyroBD[0]/NUM_CALIB_SAMPLES;
   m_gyrB[1] = _gyroBD[1]/NUM_CALIB_SAMPLES;

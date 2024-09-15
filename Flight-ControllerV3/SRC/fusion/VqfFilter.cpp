@@ -7,7 +7,7 @@
 
 #include <fusion/VqfFilter.h>
 
-VqfFilter::VqfFilter(Attitude* att) : Filter(att), m_vqf((float)FLIGHT_CONTROL_PERIOD_US/1000000, (float)FLIGHT_CONTROL_PERIOD_US/1000000, 0.1f) {
+VqfFilter::VqfFilter(Attitude* att) : Filter(att), m_vqf((float)IMU_SAMPLING_PERIOD_US/1000000, (float)IMU_SAMPLING_PERIOD_US/1000000, 0.1f) {
 	// TODO Auto-generated constructor stub
 
 }

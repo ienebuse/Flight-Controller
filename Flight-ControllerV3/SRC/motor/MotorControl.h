@@ -56,6 +56,15 @@ typedef struct __attribute__ ((packed)){
 	Channel chState;
 }ControlLog;
 
+typedef struct __attribute__ ((packed)){
+	M_Speed mSpeed;
+	Pid_Gains roll;
+	Pid_Gains pitch;
+	Pid_Gains yaw;
+	Channel chState;
+	Pid_Vals pid;
+}ControlLog_t;
+
 typedef enum {
 	ROLL,
 	PITCH,
@@ -82,11 +91,25 @@ public:
 		Channel channel;
 		memcpy(&channel, m_rxCh, sizeof(Channel));
 		ControlLog log = {
-				.mSpeed = {.M1 = m_motor[0].speed, .M2 = m_motor[1].speed, .M3 = m_motor[2].speed, .M4 = m_motor[3].speed},
+				.mSpeed = {.M1 = m_motor[0].speed, .M2 = m_motor[1].speed, .M3 = m_motor[2].speed, .M4 = tPID},//m_motor[3].speed},
 				.roll = getPID(ROLL),
 				.pitch = getPID(PITCH),
 				.yaw = getPID(YAW),
 				.chState = channel
+		};
+		return log;
+	}
+
+	inline ControlLog_t getBBxLog() {
+		Channel channel;
+		memcpy(&channel, m_rxCh, sizeof(Channel));
+		ControlLog_t log = {
+				.mSpeed = {.M1 = m_motor[0].speed, .M2 = m_motor[1].speed, .M3 = m_motor[2].speed, .M4 = m_motor[3].speed},
+				.roll = getPID(ROLL),
+				.pitch = getPID(PITCH),
+				.yaw = getPID(YAW),
+				.chState = channel,
+				.pid = m_pidVals,
 		};
 		return log;
 	}
@@ -128,6 +151,8 @@ private :
 	PID m_xPosPID, m_yPosPID;
 
 	bool m_isArmed = false;
+	float tPID = 0;
+	Pid_Vals m_pidVals;
 };
 
 #endif /* MOTOR_MOTORCONTROL_H_ */

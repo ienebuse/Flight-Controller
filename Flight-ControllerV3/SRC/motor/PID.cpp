@@ -81,8 +81,9 @@ float PID::run(float pos, float rate, CNTRL_Type controlType, PID_Type pidType, 
 		m_lastOutput = pos;
 	}
 
-	if(pidType = PID_THROTTLE) {
-
+	if(pidType == PID_THROTTLE) {
+		kpScale = 1 - (pos / m_setPoint);
+		kpScale = MAX(kpScale,THROTTLE_PID_Kp_Scale);
 	}
 
 	m_integral = (error + m_lastError) * dT/2;
