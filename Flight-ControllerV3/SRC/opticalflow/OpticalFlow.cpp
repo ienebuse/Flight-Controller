@@ -161,6 +161,7 @@ void OpticalFlow::init(UART_HandleTypeDef* huart, AHRS* ahrs) {
 
 	xFilt.init(0.5, 100);
 	yFilt.init(0.5, 100);
+	zFilt.init(10, 100);
 
 	HAL_UART_AbortReceive(huart);
 
@@ -462,9 +463,10 @@ uint8_t OpticalFlow::crc8_dvb_s2(uint8_t crc, uint8_t a)
 
 void OpticalFlow::taskFunc(timetick_us currenTimeUs) {
 //	static char buff[60];
-
+//	static float z = 0;
 	if(lidarRdy) {
-		currentFlowData.z = (float)m_hLidar;
+		currentFlowData.z = zFilt.apply((float)m_hLidar);
+//		z = zFilt.apply(currentFlowData.z);
 		lidarRdy = false;
 	}
 
@@ -531,6 +533,7 @@ void OpticalFlow::taskFunc(timetick_us currenTimeUs) {
 //		snprintf(buff, 60, "%.1f,%.1f,%.3f,%.1f,%.1f,%.1f,%.1f\r\n",wPos.x,wPos.y,yaw,vwx,vwy,vwx1,vwy1);
 //		snprintf(buff, 60, "%.1f,%.1f,%.3f\r\n",wPos.x,wPos.y,yaw);
 //		snprintf(buff, 60, "%.3f,%.3f,%.3f\r\n",h1,h2,currentFlowData.z);
+//		snprintf(buff, 60, "%.3f,%.3f,%.3f\r\n",z,currentFlowData.z, 0.8*z + 0.2*currentFlowData.z);
 //		sendData((uint8_t*)buff, strlen(buff));
 
 		m_xFlwSum = 0;

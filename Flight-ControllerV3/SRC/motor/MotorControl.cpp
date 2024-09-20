@@ -234,15 +234,15 @@ void MotorControl::run(Attitude currentAttitude,  Channel* rxCh, timetick_us cur
 		*/
 
 
-		m1 = rxCh->throttle - pitchPid + rollPid + yawPid;
-		m2 = rxCh->throttle + pitchPid + rollPid - yawPid;
-		m3 = rxCh->throttle - pitchPid - rollPid - yawPid;
-		m4 = rxCh->throttle + pitchPid - rollPid + yawPid;
+//		m1 = rxCh->throttle - pitchPid + rollPid + yawPid;
+//		m2 = rxCh->throttle + pitchPid + rollPid - yawPid;
+//		m3 = rxCh->throttle - pitchPid - rollPid - yawPid;
+//		m4 = rxCh->throttle + pitchPid - rollPid + yawPid;
 
-//		m1 = throttle - pitchPid + rollPid + yawPid;
-//		m2 = throttle + pitchPid + rollPid - yawPid;
-//		m3 = throttle - pitchPid - rollPid - yawPid;
-//		m4 = throttle + pitchPid - rollPid + yawPid;
+		m1 = throttle - pitchPid + rollPid + yawPid;
+		m2 = throttle + pitchPid + rollPid - yawPid;
+		m3 = throttle - pitchPid - rollPid - yawPid;
+		m4 = throttle + pitchPid - rollPid + yawPid;
 
 		m1 = motorConstraint(m1);
 		m2 = motorConstraint(m2);

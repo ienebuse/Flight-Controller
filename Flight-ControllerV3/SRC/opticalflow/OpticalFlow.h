@@ -152,7 +152,7 @@ private:
 
     uint32_t le32(const uint8_t* const data);
 
-    LowPassFilter xFilt, yFilt;
+    LowPassFilter xFilt, yFilt, zFilt;
 
 };
 

@@ -27,11 +27,13 @@
 #define DEG2RAD 					M_PI/180
 
 #define ENABLE_MOTORS				1
-#define MOTOR_LIMIT_SCALE			0.75
+#define MOTOR_LIMIT_SCALE			0.70
 #define MOTOR_IDLE_SCALE			0.1
 #define ENABLE_DEBUG				0
 
 #define USE_MAGNETOMETER			1
+#define MAG_DECLINATION				0.6667f
+#define MAG_DEV_ADDR				0x1E
 
 #define USE_BAROMETER				0
 #define USE_BARO_CONT_UPDATE		0
@@ -40,9 +42,7 @@
 
 #define IMU_SAMPLING_PERIOD_US		2100
 #define FLIGHT_CONTROL_PERIOD_US	10000
-#define MAG_DEV_ADDR	0x1E
 
-#define MAG_DECLINATION				0.6667f
 
 //#define USE_MADGWICK
 //#define USE_MAHOHY
@@ -82,7 +82,7 @@
 #define MAX_POS						45.0f	// deg
 #define MAX_ALT_RATE				3000 // mm/s
 #define MAX_YAW_POS					180.0f
-#define MOTOR_MIN						5.0f
+#define MOTOR_MIN					5.0f
 #define MOTOR_MAX					100.0f
 
 #define ROLL_PID_Kp					0.5f
@@ -102,14 +102,14 @@
 #define YAW_PID_kd					0.0f
 
 #define THROTTLE_PID_Kp				0.80f
-#define THROTTLE_PID_Ki				1.50f
-#define THROTTLE_PID_Kd				0.0f
+#define THROTTLE_PID_Ki				2.0f
+#define THROTTLE_PID_Kd				0.05f
 
 #define THROTTLE_PID_Kp_Scale  		0.15f
 
 #define POS_PID_Kp					0.05f
 #define POS_PID_Ki					0.001f
-#define POS_PID_Kd					0.000000f
+#define POS_PID_Kd					0.0f
 
 
 #define VOLTAGE_MEASUREMENT_SCALE	14.46f

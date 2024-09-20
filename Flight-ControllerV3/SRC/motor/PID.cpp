@@ -54,6 +54,7 @@ float PID::run(float pos, float rate, CNTRL_Type controlType, PID_Type pidType, 
 //	if(pidType == PID_THROTTLE) {	// Throttle PID uses only single loop position control
 	if(mode == MODE_S_LOOP) {
 		error = m_setPoint - pos;
+		pos = 0.7*pos + 0.3*m_lastOutput;
 		dError = (pos - m_lastOutput)/dT;
 		m_lastOutput = pos;
 	}
