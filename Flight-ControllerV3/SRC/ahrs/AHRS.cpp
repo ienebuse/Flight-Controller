@@ -327,24 +327,6 @@ Euler AHRS::quat2Euler(Quat data)
     ans.r = atan2(t3, t4)*RAD2DEG;
     ans.y = atan2(t1, t0)*RAD2DEG;
 
-
-	// Roll (x-axis rotation)
-//	float sinr_cosp = 2 * (data.q0 * data.q1 + data.q2 * data.q3);
-//	float cosr_cosp = 1 - 2 * (data.q1 * data.q1 + data.q2 * data.q2);
-//	ans.r = std::atan2(sinr_cosp, cosr_cosp);
-//
-//	// Pitch (y-axis rotation)
-//	float sinp = 2 * (data.q0 * data.q2 - data.q3 * data.q1);
-//	if (std::abs(sinp) >= 1)
-//		ans.p = std::copysign(M_PI / 2, sinp); // use 90 degrees if out of range
-//	else
-//		ans.p = std::asin(sinp);
-//
-//	// Yaw (z-axis rotation)
-//	float siny_cosp = 2 * (data.q0 * data.q3 + data.q1 * data.q2);
-//	float cosy_cosp = 1 - 2 * (data.q2 * data.q2 + data.q3 * data.q3);
-//	ans.y = std::atan2(siny_cosp, cosy_cosp);
-
     return ans;
 }
 

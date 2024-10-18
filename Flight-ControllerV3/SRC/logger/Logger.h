@@ -32,9 +32,16 @@ public:
 
 	virtual void log(timetick_us currenTimeUs);
 
+	void handleRxInterrupt(bool reset);
+
+	void handleUSBRxData(uint8_t* rxData);
+
 private:
 	char m_data[200];
 	Log_Data m_logData;
+	static const uint8_t MAX_BUFFER_SIZE{50};
+	uint8_t rx_buffer[MAX_BUFFER_SIZE];
+	uint8_t m_state = 0;
 };
 
 #endif /* LOGGER_LOGGER_H_ */

@@ -7,6 +7,7 @@
 
 #include <meter/Meter.h>
 #include <typedefs.h>
+#include <Application.h>
 
 /* ADC internal channels related definitions */
 /* Internal voltage reference VrefInt */
@@ -100,7 +101,11 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 	Meter::update(hadc);
 }
 
-void Meter::taskFunc(timetick_us currenTimeUs) {
+void Meter::taskFunc(timetick_us currentTimeUs) {
 	batteryVoltage = getAdcVoltage(ADC_CH_VOLTAGE) * VOLTAGE_MEASUREMENT_SCALE;
+	if((batteryVoltage < BATTERY_ALARM_THRESHOLD) && (currentTimeUs - m_lastTime > BATTERY_ALARM_PERIOD_US)) {
+		Application::buzzerToggle();
+		m_lastTime = currentTimeUs;
+	}
 }
 

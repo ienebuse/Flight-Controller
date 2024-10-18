@@ -90,7 +90,8 @@ BlackBox_Data BlackBok::getPacket(timetick_us currenTimeUs) {
 
 
 	m_logData.att = m_ahrs->getLog().euler;
-	m_logData.optFlw = m_optFlw->getFlowData();
+//	m_logData.optFlw = m_optFlw->getFlowData();
+	m_logData.optFlw = m_optFlw->getOptFlowData();
 
 	ControlLog_t ctrlLog = m_motor->getBBxLog();
 	m_logData.mSpeed = ctrlLog.mSpeed;
@@ -141,6 +142,9 @@ void BlackBok::log(timetick_us currenTimeUs) {
 	}
 	if(m_justErased) {
 		if(m_eraseResp) {
+			Application::buzzerOn();
+			TimeTick::delay_ms(300);
+			Application::buzzerOff();
 			m_eraseSuccess = true;
 			m_justErased = false;
 		}

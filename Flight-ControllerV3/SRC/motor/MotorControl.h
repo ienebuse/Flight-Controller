@@ -91,7 +91,8 @@ public:
 		Channel channel;
 		memcpy(&channel, m_rxCh, sizeof(Channel));
 		ControlLog log = {
-				.mSpeed = {.M1 = m_motor[0].speed, .M2 = m_motor[1].speed, .M3 = m_motor[2].speed, .M4 = tPID},//m_motor[3].speed},
+//				.mSpeed = {.M1 = m_motor[0].speed, .M2 = m_motor[1].speed, .M3 = m_motor[2].speed, .M4 = tPID},//m_motor[3].speed},
+				.mSpeed = {.M1 = m_motor[0].speed, .M2 = m_motor[1].speed, .M3 = m_motor[2].speed, .M4 = m_motor[3].speed},
 				.roll = getPID(ROLL),
 				.pitch = getPID(PITCH),
 				.yaw = getPID(YAW),
@@ -121,6 +122,10 @@ public:
 
 	void increamentPID(eAxis axis, float p, float i, float d);
 
+	void setPIDGains(eAxis axis, float p, float i, float d) {
+		m_pid[axis].setGains(p, i, d);
+	}
+
 	inline Pid_Gains getPID(eAxis axis) {
 		return m_pid[axis].getGains();
 	}
@@ -134,6 +139,8 @@ public:
 	float scaleAngleRate(float rate, eAxis axis);
 
 	Vector_t<float> getLocalPos(Vector_t<float> wPos, float yaw);
+
+	float scalePid(float pid);
 
 //	sMotor* run(Attitude currentAttitude,  Channel* rxCh, timetick_us currentTime);
 	void run(Attitude currentAttitude,  Channel* rxCh, timetick_us currentTime);

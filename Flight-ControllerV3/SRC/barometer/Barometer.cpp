@@ -21,7 +21,18 @@ bool Barometer::init(I2C_Bus* i2cBus) {
 }
 
 float Barometer::getAltitude() {
-	m_altData.altAvailable = false;
+//	static uint8_t initCount = 0;
+//	static float offset = 0;
+//	if(initCount == 10 && m_altData.altAvailable) {
+//		offset = m_altData.altitude;
+//		++initCount;
+//	}
+//	if(initCount < 10 && m_altData.altAvailable) {
+//		++initCount;
+//	}
+//	m_altData.altAvailable = false;
+//	return (m_altData.altitude-offset)*1000;
+
 	return m_altData.altitude;
 }
 
@@ -38,7 +49,7 @@ void Barometer::taskFunc(timetick_us currenTimeUs) {
 	m_altData = m_sensor.getContAltitude();
 #else
 	m_altData = m_sensor.getAltitude();
-	setTaskPeriod(m_altData.acqTimeUs);
+//	setTaskPeriod(m_altData.acqTimeUs);
 #endif
 
 

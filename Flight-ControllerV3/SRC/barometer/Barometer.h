@@ -8,8 +8,8 @@
 #ifndef BAROMETER_BAROMETER_H_
 #define BAROMETER_BAROMETER_H_
 
-#include <Task.h>
 #include <DPS310.h>
+#include <Task.h>
 
 class Barometer : public Task{
 public:
@@ -25,7 +25,7 @@ public:
 	virtual void taskFunc(timetick_us currenTimeUs);
 
 private:
-	DPS310 m_sensor;
+	dps310::DPS310 m_sensor;
 	AltData m_altData;
 
 	void setTaskPeriod(timetick_us period);

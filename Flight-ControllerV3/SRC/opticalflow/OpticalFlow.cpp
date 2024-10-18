@@ -159,14 +159,14 @@ void OpticalFlow::init(UART_HandleTypeDef* huart, AHRS* ahrs) {
 	m_uart = huart;
 	m_ahrs = ahrs;
 
-	xFilt.init(0.5, 100);
-	yFilt.init(0.5, 100);
+	xFilt.init(0.35, 100);
+	yFilt.init(0.35, 100);
 	zFilt.init(10, 100);
 
 	HAL_UART_AbortReceive(huart);
 
-	__HAL_UART_ENABLE_IT(huart, UART_IT_RXNE);  // Enable RXNE interrupt
-	HAL_NVIC_EnableIRQ(LPUART1_IRQn);              // Enable the USART2 interrupt in the NVIC
+	__HAL_UART_ENABLE_IT(huart, UART_IT_RXNE);  	// Enable RXNE interrupt
+	HAL_NVIC_EnableIRQ(LPUART1_IRQn);              	// Enable the USART2 interrupt in the NVIC
 
 	__HAL_UART_ENABLE(huart);
 
@@ -513,7 +513,7 @@ void OpticalFlow::taskFunc(timetick_us currenTimeUs) {
 //		float vlx = vwx*(q02 + q12 - q22 - q32) + vwy*(_2q1q2 + _2q0q3);
 //		float vly = vwx*(_2q1q2 - _2q0q3) + vwy*(q02 - q12 + q22 - q32);
 
-		if(currentFlowData.z > 300) {
+		if(currentFlowData.z > 220) {
 			wPos.x += vwx * 0.02f;
 			wPos.y += vwy * 0.02f;
 		}

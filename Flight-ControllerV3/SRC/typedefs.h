@@ -27,9 +27,11 @@
 #define DEG2RAD 					M_PI/180
 
 #define ENABLE_MOTORS				1
-#define MOTOR_LIMIT_SCALE			0.70
-#define MOTOR_IDLE_SCALE			0.1
-#define ENABLE_DEBUG				0
+#define MOTOR_LIMIT_SCALE			0.65
+#define MOTOR_IDLE_STATE			10
+#define ENABLE_DEBUG				1
+#define PID_MAX_SCALE				20
+#define THROTTLE_MAX_SCALE 			((MOTOR_LIMIT_SCALE * 100) - PID_MAX_SCALE) / 100
 
 #define USE_MAGNETOMETER			1
 #define MAG_DECLINATION				0.6667f
@@ -41,7 +43,9 @@
 #define USE_GPS						0
 
 #define IMU_SAMPLING_PERIOD_US		2100
-#define FLIGHT_CONTROL_PERIOD_US	10000
+#define FLIGHT_CONTROL_PERIOD_US	5000
+#define OPT_FLW_PERIOD_US			20000
+#define HEARTBEAT_PERIOD_US			500000
 
 
 //#define USE_MADGWICK
@@ -52,8 +56,8 @@
 //#define USE_COMP
 
 
-#define USE_GYRO_FILTER				0
-#define USE_ACCEL_FILTER			0
+#define USE_GYRO_FILTER				1
+#define USE_ACCEL_FILTER			1
 
 #define USE_ACC_EST					0
 #define USE_GYRO_BIAS				0
@@ -80,36 +84,34 @@
 #define THROTTLE_LIMIT	1
 #define MAX_RATE					360.0f	// deg/s
 #define MAX_POS						45.0f	// deg
-#define MAX_ALT_RATE				3000 // mm/s
+#define MAX_ALT_RATE				1000 	// mm/s
+#define MAX_ALT_RATE_SCALE			MAX_ALT_RATE * 100 / OPTICAL_FLOW_MAX_HEIGHT
 #define MAX_YAW_POS					180.0f
 #define MOTOR_MIN					5.0f
-#define MOTOR_MAX					100.0f
+#define MOTOR_MAX					65.0f
 
-#define ROLL_PID_Kp					0.5f
+#define ROLL_PID_Kp					0.7f
 #define ROLL_PID_ki					0.2f
-#define ROLL_PID_kd					0.0f
+#define ROLL_PID_kd					0.0002f
 
-//#define PITCH_PID_Kp				40.0f
-//#define PITCH_PID_ki				30.0f
-//#define PITCH_PID_kd				0.0f
-
-#define PITCH_PID_Kp				0.5f
+#define PITCH_PID_Kp				0.7f
 #define PITCH_PID_ki				0.2f
-#define PITCH_PID_kd				0.0f
+#define PITCH_PID_kd				0.0002f
 
-#define YAW_PID_Kp					0.5f
+#define YAW_PID_Kp					0.6f
 #define YAW_PID_ki					0.2f
-#define YAW_PID_kd					0.0f
+#define YAW_PID_kd					0.0002f
 
-#define THROTTLE_PID_Kp				0.80f
-#define THROTTLE_PID_Ki				2.0f
-#define THROTTLE_PID_Kd				0.05f
+#define THROTTLE_PID_Kp				5.0f
+#define THROTTLE_PID_Ki				0.55f
+#define THROTTLE_PID_Kd				1.5f
 
 #define THROTTLE_PID_Kp_Scale  		0.15f
 
-#define POS_PID_Kp					0.05f
+#define POS_PID_Kp					0.075f
 #define POS_PID_Ki					0.001f
-#define POS_PID_Kd					0.0f
+#define POS_PID_Kd					0.05f
+#define POS_PID_rKp					0.3f
 
 
 #define VOLTAGE_MEASUREMENT_SCALE	14.46f
@@ -117,7 +119,45 @@
 
 #define SEA_LEVEL_hPA				101300
 
+#define BATTERY_TYPE_S				4
 
+#if BATTERY_TYPE_S == 4
+	#define BATTERY_ALARM_THRESHOLD		14.0f
+#else
+	#define BATTERY_ALARM_THRESHOLD		10.5f
+#endif
+#define BATTERY_ALARM_PERIOD_US		1000000
+
+
+
+
+#define THROTTLE_MAX		192.0f
+#define THROTTLE_MIN		1792.0f
+#define THROTTLE_RANGE 		THROTTLE_MAX - THROTTLE_MIN
+
+#define SW_MIN		192.0f
+#define SW_MAX		1792.0f
+#define SW_RANGE 		SW_MAX - SW_MIN
+
+
+#define RPY_MAX_ANGLE		45.0f
+#define RPY_MIN_ANGLE		-45.0f
+#define RPY_MAX				1552.0f
+#define RPY_MIN				432.0f
+#define RPY_RANGE 			RPY_MAX - RPY_MIN
+
+#define R_MAX_ANGLE			45.0f
+#define R_MIN_ANGLE			-45.0f
+#define R_MIN				1552.0f
+#define R_MAX				432.0f
+#define R_RANGE 			RPY_MAX - RPY_MIN
+
+
+
+#define THROTTLE(t) ((t-THROTTLE_MIN)*100/(THROTTLE_RANGE))
+#define RPY(rpy) ((rpy-RPY_MIN)*100/(RPY_RANGE))	//(((rpy-RPY_MIN)*(RPY_MAX_ANGLE-RPY_MIN_ANGLE)/(RPY_RANGE)) + RPY_MIN_ANGLE)
+#define RTF(r) ((r-R_MIN)*100/(R_RANGE))
+#define SW(t) ((t-SW_MIN)*100/(SW_RANGE))
 
 
 

@@ -16,7 +16,8 @@ typedef enum {
 	PID_ROLL,
 	PID_PITCH,
 	PID_YAW,
-	PID_THROTTLE
+	PID_THROTTLE,
+	PID_POS,
 }PID_Type;
 
 typedef enum {
@@ -38,15 +39,16 @@ public:
 	PID(float kp, float ki, float kd) : m_Kp(kp), m_Ki(ki), m_Kd(kd){}
 	virtual ~PID();
 
-	inline void setGains(float kp, float ki, float kd) {
+	inline void setGains(float kp, float ki, float kd, float rKp = 2) {
 		m_Kp = kp;
 		m_Ki = ki;
 		m_Kd = kd;
+		m_backCalculationGain = 0.8*m_Ki;
 	}
 
 	inline void updateSetpoint(float newSetpoint, PID_Type pidType = PID_ROLL) {
 		if(pidType == PID_THROTTLE) {
-			m_setPoint = newSetpoint/OPTICAL_FLOW_MAX_HEIGHT * 100;;
+			m_setPoint = newSetpoint/OPTICAL_FLOW_MAX_HEIGHT * 100;
 		}
 		else {
 			m_setPoint = 2*(newSetpoint - 50);
@@ -90,18 +92,21 @@ public:
 	float run(float pos, float rate, CNTRL_Type rateControl = CONTROL_POS, PID_Type pidType = PID_ROLL, CNTRL_Mode mode = MODE_D_LOOP, float dT = 0.0021);
 
 private:
-	float m_Kp = 0.8, m_Ki = 0.2, m_Kd = 0;
+	volatile float m_Kp = 0.8, m_Ki = 0.2, m_Kd = 0, m_rKp = 2;
 	float m_setPoint = 0;
 	float m_output;
 	float m_lowLimit = -100, m_highLimit = 100;
-	float m_backCalculationGain = 0.1;
+	float m_backCalculationGain = 0.8*m_Ki;
 	timetick_us m_lastTime;
-	float m_lastError;
+//	float m_lastError;
 	float m_integral = 0;
 	float m_lastOutput = 0;
+	float m_lastError = 0, m_flastError = 0;
 	float m_lastRatePosition = 0;
 	bool m_lastControlType = true;
 	bool m_lastPosition = 0;
+	float lastRate = 0;
+	float ePMax = (float)UINT32_MAX;
 };
 
 #endif /* FLIGHT_PID_H_ */

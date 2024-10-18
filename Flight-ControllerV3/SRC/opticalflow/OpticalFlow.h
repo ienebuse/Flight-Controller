@@ -25,12 +25,14 @@ typedef union {
 	uint32_t val;
 }le32_t;
 
-typedef struct {
+typedef struct __attribute__((packed)) {
 	float vx = 0;
 	float vy = 0;
+	float h = 0;
 	float px = 0;
 	float py = 0;
-	float h = 0;
+	float wx = 0;
+	float wy = 0;
 }OptFlw_Data;
 
 class OpticalFlow : public Task {
@@ -108,6 +110,8 @@ public:
 		flwData.px = wPos.x * (q02 + q12 - q22 - q32) + wPos.y*(_2q1q2 + _2q0q3);
 		flwData.py = wPos.x * (_2q1q2 - _2q0q3) + wPos.y*(q02 - q12 + q22 - q32);
 		flwData.h = currentFlowData.z * (q02 - q12 - q22 + q32);
+		flwData.wx = wPos.x;
+		flwData.wy = wPos.y;
 
 		return flwData;
 	}

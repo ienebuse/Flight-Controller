@@ -39,6 +39,9 @@ float PID::run(float pos, float rate, CNTRL_Type controlType, PID_Type pidType, 
 	float dError = 0;
 	float kpScale = 1;
 
+	float lastIntegral = m_integral;
+
+
 	// Yaw should always be position control except when there is a command to move the yaw then it should go to rate control
 	if(pidType == PID_YAW) {
 		if(controlType != CONTROL_POS) {
@@ -54,9 +57,13 @@ float PID::run(float pos, float rate, CNTRL_Type controlType, PID_Type pidType, 
 //	if(pidType == PID_THROTTLE) {	// Throttle PID uses only single loop position control
 	if(mode == MODE_S_LOOP) {
 		error = m_setPoint - pos;
-		pos = 0.7*pos + 0.3*m_lastOutput;
-		dError = (pos - m_lastOutput)/dT;
-		m_lastOutput = pos;
+//		pos = 0.7*pos + 0.3*m_lastOutput;
+//		dError = (pos - m_lastOutput)/dT;
+//		m_lastOutput = pos;
+
+//		float e = 0.8*error + 0.2*m_lastError;
+		dError = (error - m_lastError)/dT;
+//		m_lastError = e;
 	}
 	else if(controlType == CONTROL_RATE && abs(m_setPoint) > 2) {
 //	if(controlType == CONTROL_RATE && abs(m_setPoint) > 2) {
@@ -75,19 +82,37 @@ float PID::run(float pos, float rate, CNTRL_Type controlType, PID_Type pidType, 
 
 		float eP = m_setPoint - pos;
 
-		float rateSp = copysign(fastSqrt(abs(eP)),eP);
+		float rateSp = 0;
+
+		if(pidType == PID_THROTTLE) {
+			if(m_setPoint <= 0) {
+				return 0;
+			}
+			rateSp = 2*(1 - pos / m_setPoint);
+			rateSp = MIN(MAX_ALT_RATE_SCALE, rateSp);
+		}
+		else {
+			rateSp = m_rKp * copysign(fastSqrt(abs(eP)),eP);
+		}
 
 		error = rateSp - rate;
-		dError = (pos - m_lastOutput)/dT;
-		m_lastOutput = pos;
+//		dError = (pos - m_lastOutput)/dT;
+//		m_lastOutput = pos;
+//		float e = 0.8*error + 0.2*m_lastError;
+		dError = (error - m_lastError)/dT;
+//		m_lastError = e;
 	}
 
-	if(pidType == PID_THROTTLE) {
-		kpScale = 1 - (pos / m_setPoint);
-		kpScale = MAX(kpScale,THROTTLE_PID_Kp_Scale);
+//	if(pidType == PID_THROTTLE) {
+//		kpScale = 1 - (pos / m_setPoint);
+//		kpScale = MAX(kpScale,THROTTLE_PID_Kp_Scale);
+//	}
+
+	if(m_lastOutput > m_lowLimit && m_lastOutput < m_highLimit) {
+		m_integral += (error + m_lastError) * dT/2;
 	}
 
-	m_integral = (error + m_lastError) * dT/2;
+
 
 	m_lastError = error;
 
@@ -95,19 +120,31 @@ float PID::run(float pos, float rate, CNTRL_Type controlType, PID_Type pidType, 
 
 	float _pid = pid;
 
+
 	if(pid < m_lowLimit) {
+		m_integral += m_backCalculationGain * (m_lowLimit - pid);
+//		m_integral = lastIntegral*0.98;
 		pid = m_lowLimit;
 	}
 	if(pid > m_highLimit) {
+		m_integral += m_backCalculationGain * (m_highLimit - pid);
+//		m_integral = lastIntegral*0.98;
 		pid = m_highLimit;
 	}
 
-	m_integral -= m_backCalculationGain * (pid - _pid);
+//	m_integral -= m_backCalculationGain * (pid - _pid);
+//	m_integral -= m_Ki * (_pid - pid);
+//	m_integral -= m_Ki * (pid - _pid);
 
 //	m_lastTime = currentTime;
 	m_lastOutput = pid;
 	m_lastControlType = controlType;
 	m_lastPosition = pos;
+
+	if(isnan(pid)) {
+		int i = 0;
+		i++;
+	}
 
 	return pid;
 }

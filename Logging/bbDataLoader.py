@@ -10,7 +10,7 @@ from matplotlib.widgets import Slider, Button
 tstamp=[]
 id=[]
 
-NUM_PARAMS = 29
+NUM_PARAMS = 33
 
 class bbParam():    
     def __init__(self):
@@ -26,7 +26,7 @@ params  = [bbParam() for _ in range(NUM_PARAMS)]
 
 
 def load_data(file_path='blackbox_data.csv'):
-    global params,t, id #, R, P, Y, M1, M2, M3, M4, chR, chP,chT, chY, SL1, SL2, SR2, SR1, ofVx, ofVy, ofH, bat, alt, lat, lon, hMSL, tPID, rPID, pPID, yPID, pX, pY,
+    global params,t, id #, R, P, Y, M1, M2, M3, M4, chR, chP,chT, chY, SL1, SL2, SR2, SR1, ofVx, ofVy, ofH, ofPx, ofPy, ofWx, ofWy, bat, alt, lat, lon, hMSL, tPID, rPID, pPID, yPID, pX, pY,
     tstamp=[]
     id=[]
     for i in range(NUM_PARAMS):

@@ -15,7 +15,6 @@
 #include <TimeTick.h>
 #include <MotorControl.h>
 #include <receiver/iSBusRx.h>
-#include <sensors/DPS310.h>
 #include <Scheduler.h>
 #include <Logger.h>
 #include <HeartBeat.h>
@@ -23,6 +22,7 @@
 #include <barometer/Barometer.h>
 #include <OpticalFlow.h>
 #include <BlackBok.h>
+#include <DPS310.h>
 
 //#include <Task.h>
 
@@ -61,6 +61,10 @@ public:
 		return &m_blackBox;
 	}
 
+	inline Logger* getLogger() {
+		return &m_log;
+	}
+
 	void init(HAL_Devices_t *devices);
 
 	void run();
@@ -75,6 +79,26 @@ public:
 
 	void checkBlackBloxRead(uint16_t cmd);
 
+	static inline void buzzerOn() {
+		if(buzz_state) {
+			return;
+		}
+		HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, GPIO_PIN_SET);
+		buzz_state = true;
+	}
+
+	static inline void buzzerOff() {
+		if(!buzz_state) {
+			return;
+		}
+		HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, GPIO_PIN_RESET);
+		buzz_state = false;
+	}
+
+	static inline void buzzerToggle() {
+		buzz_state ? buzzerOff() : buzzerOn();
+	}
+
 
 private:
 	AHRS m_ahrs;
@@ -86,7 +110,7 @@ private:
 	MotorControl m_motorControl;
 	Meter m_meter;
 //	Dps310 barometer;
-	DPS310 barometer;
+//	dps310::DPS310 barometer;
 	GPS m_gps;
 	Barometer m_barometer;
 	OpticalFlow m_optflw;
@@ -99,6 +123,8 @@ private:
 
 
 	bool m_PidMode{false};
+
+	static bool buzz_state;
 
 	Scheduler m_scheduler;
 

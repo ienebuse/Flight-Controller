@@ -60,7 +60,7 @@ void HAL_UART_ExRxEventCallback(UART_HandleTypeDef *huart,uint16_t size)
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-	static volatile timetick_us lastSbusData = 0,  lastOptflwData = 0;
+	static volatile timetick_us lastSbusData = 0,  lastOptflwData = 0, lastLogRxData = 0;
 	timetick_us now = TimeTick::getTimeUs();
 
 	if(huart == app.getSbusRx()->getUartRx()->getUart()) {
@@ -79,8 +79,13 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 	}
 
 //	else if(huart == iLogger::getUart()) {
-	else if(huart->Instance == USART3) {
-		iLogger::handleInterrupt();
+//	else if(huart->Instance == USART3) {
+////		iLogger::handleInterrupt();
+//	}
+
+	else if(huart == app.getLogger()->getUart()) {
+		app.getLogger()->handleRxInterrupt(now - lastLogRxData > 100000);
+		lastLogRxData = now;
 	}
 
 }
@@ -151,5 +156,9 @@ extern "C" void* appInstance()
 
 extern "C" void increamentAppTickuS() {
 	app.increamentTickUs();
+}
+
+extern "C" void usbCDCRxCallback(uint8_t* rxData) {
+	app.getLogger()->handleUSBRxData(rxData);
 }
 

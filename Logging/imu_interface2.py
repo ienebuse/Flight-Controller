@@ -327,8 +327,8 @@ def simulate_block_motion(interval):
 
         Roll.append(M1)
         Pitch.append(M2)
-        Yaw.append(M4)
-        Heading.append(tPID)
+        Yaw.append(M3)
+        Heading.append(M4)
 
 
         Roll = Roll[1:]#.pop(0)

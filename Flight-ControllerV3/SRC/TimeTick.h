@@ -17,6 +17,8 @@ public:
 	virtual ~TimeTick();
 
 	static inline void init(TIM_HandleTypeDef* tmr) {
+//		if(p_instance != nullptr) return;
+//		p_instance = this;
 		mp_tmr = tmr;
 		HAL_TIM_Base_Start_IT(mp_tmr);
 	}
@@ -45,6 +47,7 @@ public:
 private:
 	static TIM_HandleTypeDef* mp_tmr;
 	static volatile timetick_us  m_tickLow;
+	TimeTick* p_instance = nullptr;
 
 //	inline TIM_HandleTypeDef* getInstance() {
 //		return this;

@@ -12,6 +12,95 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from PyQt5.QtCore import Qt, QPoint
 from PyQt5.QtGui import QPainter, QPen
 
+import serial
+import struct
+
+class DroneComms():
+    BYTE_START_FLAG1 = 0x85
+    BYTE_START_FLAG2 = 0x8B
+    ROLL_PID_CMD = 0x00
+    PITCH_PID_CMD = 0x01
+    YAW_PID_CMD = 0x02
+    ALL_PID_CMD = 0x03
+
+    def __init__(self):
+        self.ser = None
+        self.baud = 115200
+        self.port = 'COM1'
+        self.header = [self.BYTE_START_FLAG1, self.BYTE_START_FLAG2]
+        self.connectState = False
+
+    def setBaudrate(self, baud):
+        self.baud = baud
+
+    def setPort(self, port):
+        self.port = port
+    
+    def connect(self):
+        try:
+            self.ser = serial.Serial(self.port, self.baud)
+            self.connectState = True
+            return True
+        except:
+            self.connectState = False
+            return False
+    
+    def disconnect(self):        
+        self.connectState = False
+        try:
+            self.ser.close()            
+            return True
+        except:
+            return False
+        
+    def sendData(self, data):
+        _data = bytearray(data)
+        self.ser.write(_data)
+
+    def getHeader(self):
+        header = struct.pack('<2B',*self.header)
+        return header
+
+    def sendPIDAxis(self, axis, pid):
+        header = self.getHeader()
+        data = struct.pack('<BB3f', 14, axis, *pid)
+        crc = self.calculate_checksum(data[1:])
+
+        packet = header + data + bytearray([crc])
+        self.sendData(packet)
+
+        print(f'Sent: {axis} --> {pid}')
+
+    def sendAllPID(self, rollPID, pitchPID, yawPID):
+        header = self.getHeader()
+        data = struct.pack('<BB3f3f3f', 38, self.ALL_PID_CMD, *rollPID, *pitchPID, *yawPID)
+        crc = self.calculate_checksum(data[1:])
+
+        packet = header + data + bytearray([crc])
+        self.sendData(packet)
+
+        print(f'Sent: {rollPID}    {pitchPID}    {yawPID}')
+
+    def isConnected(self):
+        return self.connectState
+
+    
+    def crc8_dvb_s2(self,crc, a):
+        crc ^= a
+        for _ in range(8):
+            if crc & 0x80:
+                crc = (crc << 1) ^ 0xD5
+            else:
+                crc = crc << 1
+            crc &= 0xFF  # Ensure crc is always 8 bits
+        return crc
+
+    def calculate_checksum(self,data):
+        crc = 0
+        for byte in data:
+            crc = self.crc8_dvb_s2(crc, byte)
+        return crc
+
 
 class VelLabel(QLabel):
     def __init__(self, *args, **kwargs):
@@ -251,6 +340,164 @@ class Block(FigureCanvas):
         self.fig.canvas.draw()
 
 
+class DronePos(FigureCanvas):
+    def __init__(self, parent):
+        # self.fig, self.ax = plt.subplots(111,figsize=(parent.width()/100,parent.height()/100), )
+
+        self.fig = plt.figure(figsize=(parent.width()/100,parent.height()/100))
+        self.ax = self.fig.add_subplot()
+
+        super().__init__(self.fig)
+        self.setParent(parent)
+        
+
+        # Create drone arms in 2D (XY plane projection)
+        self.arm_length = 30
+        self.arms = [
+            np.array([[0, self.arm_length], [0, 0]]),  # Right arm (black)
+            np.array([[0, 0], [0, self.arm_length]]),  # Front arm (blue)
+            np.array([[0, -self.arm_length], [0, 0]]), # Left arm (black)
+            np.array([[0, 0], [0, -self.arm_length]])  # Back arm (blue)
+        ]
+
+        # Create propeller positions (circles)
+        self.propeller_radius = 10
+        self.propellers = [
+            np.array([self.arm_length, 0]),  # Right propeller
+            np.array([0, self.arm_length]),  # Forward propeller
+            np.array([-self.arm_length, 0]), # Left propeller
+            np.array([0, -self.arm_length])  # Back propeller
+        ]
+
+        self.color = ['red', 'red', 'green', 'green']
+
+
+        # self.original_vertices  = self.create_block()
+        
+        # # Set up the plot
+        
+        # self.ax.set_xlabel('X')
+        # self.ax.set_ylabel('Y')
+        # self.ax.set_zlabel('Z')
+        # self.ax.set_xlim([-1, 1])
+        # self.ax.set_ylim([-1, 1])
+        # self.ax.set_zlim([-1, 1])
+
+        # self.ax.spines['top'].set_visible(False)
+        # self.ax.spines['right'].set_visible(False)
+        # # self.ax.spines['left'].set_visible(False)
+        # self.ax.spines['bottom'].set_visible(False)
+
+        # # plt.subplots_adjust(left=0.0, right=1) 
+
+        # # Optionally, remove ticks
+        # self.ax.xaxis.set_ticks([])
+        # self.ax.yaxis.set_ticks([])
+        # self.ax.zaxis.set_ticks([])
+
+        # self.fig.canvas.draw()
+        
+        # # Define colors for opposite faces
+        # self.colors = ['blue', 'green', 'red', 'black']
+
+        # # Initialize plot
+        # self.plot_block(self.original_vertices)
+
+        self.transform_drone(0,np.array([0,0]))
+    
+    
+    def transform_drone(self, rotation, translation):
+        # 2D Rotation matrix for rotating the arms and propellers
+        rotation = rotation + 45
+        theta = rotation * np.pi/180
+        rotation_matrix = np.array([[np.cos(theta), -np.sin(theta)],
+                                [np.sin(theta), np.cos(theta)]])
+        
+        # Rotate arms and propellers using the 2D rotation matrix
+        rotated_arms = [rotation_matrix @ arm for arm in self.arms]
+        rotated_propellers = [rotation_matrix @ prop for prop in self.propellers]
+        
+
+        transformed_arms = [arm + translation.reshape(2, 1) for arm in rotated_arms]
+        transformed_propellers = [propeller + translation for propeller in rotated_propellers]
+
+        self.plot_drone(transformed_arms, transformed_propellers)
+
+    def plot_drone(self, arms, propellers):
+        # faces = self.create_faces(vertices)
+        # c = 0
+        # # Clear the current polygons
+        self.ax.clear()
+        # for i, face in enumerate(faces):
+        #     poly3d = Poly3DCollection([face], linewidths=1, edgecolors='k')
+        #     # poly3d.set_facecolor(colors[i // 2])
+        #     if(i == 0):
+        #         c = 3
+        #     elif(i == 1):
+        #         c = 1
+        #     elif(i == 2):
+        #         c = 0
+        #     elif(i == 3):
+        #         c = 1
+        #     elif(i == 4):
+        #         c = 2
+        #     elif(i == 5):
+        #         c = 2
+            
+        #     poly3d.set_facecolor(self.colors[c])
+        #     if i == 3:
+        #         c = 1
+        #     self.ax.add_collection3d(poly3d)
+        # self.ax.set_xlabel('X', labelpad=1, color='white')
+        # self.ax.set_ylabel('Y', labelpad=1, color='white')
+        # self.ax.set_zlabel('Z', labelpad=1, color='white')
+        self.ax.set_xlim([-300, 300])
+        self.ax.set_ylim([-300, 300])
+        # self.ax.set_zlim([-1.2, 1.2])
+
+        # # self.ax.xaxis.label.set_position([10.5, -0.1])
+        # # self.ax.yaxis.label.set_position([0.5, -0.1])
+        # # self.ax.zaxis.label.set_position([0.5, -0.1])
+
+        # self.ax.spines['top'].set_visible(False)
+        # self.ax.spines['right'].set_visible(False)
+        # # self.ax.spines['left'].set_visible(False)
+        # self.ax.spines['bottom'].set_visible(False)
+
+        # self.fig.patch.set_alpha(0.1)  # Transparent background for the figure
+        # # self.ax.patch.set_alpha(0.0)   # Transparent background for the plot
+        # self.fig.patch.set_facecolor('grey')  # Figure background to transparent
+        # self.ax.set_facecolor('black')         # Axes background to transparent
+
+        # plt.subplots_adjust(top=1, bottom=0, left=0.0, right=1) 
+
+        # # Optionally, remove ticks
+        # self.ax.xaxis.set_ticks([])
+        # self.ax.yaxis.set_ticks([])
+        # self.ax.zaxis.set_ticks([])
+
+        plt.tight_layout()
+        ##############################################################################################
+
+        # Plot the drone's arms (color-coded)
+        self.ax.plot(arms[0][0], arms[0][1], 'k-', lw=1)  # Right arm (black)
+        self.ax.plot(arms[1][0], arms[1][1], 'k-', lw=1)  # Front arm (blue)
+        self.ax.plot(arms[2][0], arms[2][1], 'b-', lw=1)  # Left arm (black)
+        self.ax.plot(arms[3][0], arms[3][1], 'b-', lw=1)  # Back arm (blue)
+
+        # Plot the propellers as red circles
+        # propeller_radius = 10
+        for i, propeller_pos in enumerate(propellers):
+            circle = plt.Circle(propeller_pos, self.propeller_radius, color=self.color[i], fill=True)
+            self.ax.add_patch(circle)
+
+        # Plot the central box (drone body)
+        # body_size = 0.2
+        # ax.add_patch(plt.Rectangle(translation - body_size/2, body_size, body_size, color='black', fill=True))
+
+
+        self.fig.canvas.draw()
+
 
 
 class Canvas(FigureCanvas):
@@ -383,6 +630,8 @@ class MainWindow(QMainWindow):
 
         self.blockView = Block(self.ui.blockWidget)
 
+        self.dronePos = DronePos(self.ui.dronePosWidget)
+
         self.chart1 = Canvas(self.ui.pane0)
         self.chart2 = Canvas(self.ui.pane1)
         self.chart3 = Canvas(self.ui.pane2)
@@ -409,7 +658,71 @@ class MainWindow(QMainWindow):
         self.velView = VelLabel(self.ui.droneView)
         self.velView.setFixedSize(self.ui.droneView.width(), self.ui.droneView.height())
 
+        self.ui.connectBtn.clicked.connect(self.on_connectBtnClicked)
+        self.ui.rollBtn.clicked.connect(self.on_rollPIDBtnClicked)
+        self.ui.pitchBtn.clicked.connect(self.on_pitchPIDBtnClicked)
+        self.ui.yawBtn.clicked.connect(self.on_yawPIDBtnClicked)
+        self.ui.sendPIDBtn.clicked.connect(self.on_sendAllPIDBtnClicked)
+
+        self.droneComms = DroneComms()
+
         self.show()
+
+    def on_connectBtnClicked(self): 
+        if(self.droneComms.isConnected()):
+            self.droneComms.disconnect()
+            self.ui.connectBtn.setText('Connect')
+            print('Disconnected')
+        else:
+            baud = int(self.ui.baudList.currentText())
+            port = self.ui.portList.currentText()
+            self.droneComms.setBaudrate(baud)
+            self.droneComms.setPort(port)
+            success = self.droneComms.connect()
+            if(success):
+                self.ui.connectBtn.setText('Disconnect')
+                print('Connected')
+            else:
+                print('Connection failed')
+            
+
+    def on_rollPIDBtnClicked(self):
+        p = float(self.ui.rollP.text())
+        i = float(self.ui.rollI.text())
+        d = float(self.ui.rollD.text())
+
+        self.droneComms.sendPIDAxis(0,[p,i,d])
+
+    def on_pitchPIDBtnClicked(self):        
+        p = float(self.ui.pitchP.text())
+        i = float(self.ui.pitchI.text())
+        d = float(self.ui.pitchD.text())
+
+        self.droneComms.sendPIDAxis(1,[p,i,d])
+
+    def on_yawPIDBtnClicked(self):        
+        p = float(self.ui.yawP.text())
+        i = float(self.ui.yawI.text())
+        d = float(self.ui.yawD.text())
+
+        self.droneComms.sendPIDAxis(2,[p,i,d])
+
+    def on_sendAllPIDBtnClicked(self):        
+        rp = float(self.ui.rollP.text())
+        ri = float(self.ui.rollI.text())
+        rd = float(self.ui.rollD.text())
+
+                
+        pp = float(self.ui.pitchP.text())
+        pi = float(self.ui.pitchI.text())
+        pd = float(self.ui.pitchD.text())
+
+              
+        yp = float(self.ui.yawP.text())
+        yi = float(self.ui.yawI.text())
+        yd = float(self.ui.yawD.text())
+
+        self.droneComms.sendAllPID([rp,ri,rd], [pp,pi,pd], [yp,yi,yd])
 
     def on_motorScaleChanged(self):
         self.motor1.setScale(float(self.ui.mtrScale.currentText()))
@@ -518,6 +831,7 @@ class MainWindow(QMainWindow):
         yaw = params[2].data[pos]
 
         self.blockView.rotate_block(roll, pitch, yaw)
+        self.dronePos.transform_drone(yaw,np.array([params[20].data[pos], params[21].data[pos]]))
 
     def updateMotor(self, pos):
         self.motor1.setMotorValue(params[3].data[pos])

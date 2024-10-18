@@ -49,8 +49,8 @@
 
 
 typedef struct CalibData {
-	Vector_t<float> scale = {.x = 1.03312421, .y = 0.984712541, .z = 0.983731747};
-	Vector_t<float> offset = {.x = 14.7200003, .y = 158.699997, .z = 107.639999};
+	Vector_t<float> scale = {.x = 1.01740813, .y = 1.01251209, .z = 0.971375823};
+	Vector_t<float> offset = {.x = -2.75999999, .y = 127.420006, .z = 124.660004};
 }CalibData;
 
 //typedef struct CalibData {

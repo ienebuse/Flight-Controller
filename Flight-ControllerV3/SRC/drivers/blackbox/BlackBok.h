@@ -21,7 +21,8 @@ typedef struct __attribute__ ((packed)) {
 	M_Speed mSpeed;
 	Pid_Vals pid;
 	Channel chState;
-	Vector_t<float> optFlw;
+//	Vector_t<float> optFlw;
+	OptFlw_Data optFlw;
 	float battVoltage = 0;
 	float baroAlt = 0;
 	float lat = 0;

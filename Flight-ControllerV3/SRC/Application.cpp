@@ -16,38 +16,13 @@
 //#include <string.h>
 //#include <stdio.h>
 
-#define THROTTLE_MAX		192.0f
-#define THROTTLE_MIN		1792.0f
-#define THROTTLE_RANGE 		THROTTLE_MAX - THROTTLE_MIN
 
-#define SW_MIN		192.0f
-#define SW_MAX		1792.0f
-#define SW_RANGE 		SW_MAX - SW_MIN
-
-
-#define RPY_MAX_ANGLE		45.0f
-#define RPY_MIN_ANGLE		-45.0f
-#define RPY_MAX				1552.0f
-#define RPY_MIN				432.0f
-#define RPY_RANGE 			RPY_MAX - RPY_MIN
-
-#define R_MAX_ANGLE			45.0f
-#define R_MIN_ANGLE			-45.0f
-#define R_MIN				1552.0f
-#define R_MAX				432.0f
-#define R_RANGE 			RPY_MAX - RPY_MIN
-
-
-
-#define THROTTLE(t) ((t-THROTTLE_MIN)*100/(THROTTLE_RANGE))
-#define RPY(rpy) ((rpy-RPY_MIN)*100/(RPY_RANGE))	//(((rpy-RPY_MIN)*(RPY_MAX_ANGLE-RPY_MIN_ANGLE)/(RPY_RANGE)) + RPY_MIN_ANGLE)
-#define RTF(r) ((r-R_MIN)*100/(R_RANGE))
-#define SW(t) ((t-SW_MIN)*100/(SW_RANGE))
 
 Attitude view;
 float dt = 0;
 
 volatile bool Application::sUartTxReady = true;
+bool Application::buzz_state = false;
 
 //typedef struct {
 //	volatile float roll = 0;
@@ -151,7 +126,7 @@ void Application::init(HAL_Devices_t *devices) {
 
 #if (USE_BAROMETER == 1)
 	m_barometer.init(&m_i2cBus);
-	m_barometer.setTaskInfo(BAROMETER_TASK, PRIORITY_MEDIUM, PRIORITY_MEDIUM, 0, 500000);
+	m_barometer.setTaskInfo(BAROMETER_TASK, PRIORITY_MEDIUM, PRIORITY_MEDIUM, 0, 100000);
 	m_scheduler.addTask(&m_barometer);
 #endif
 
@@ -179,11 +154,11 @@ void Application::init(HAL_Devices_t *devices) {
 	m_scheduler.addTask(&m_log);
 #endif
 
-	m_hrtBt.setTaskInfo(HEARTBEAT_TASK, PRIORITY_MEDIUM, PRIORITY_MEDIUM, 0, 500000);
+	m_hrtBt.setTaskInfo(HEARTBEAT_TASK, PRIORITY_MEDIUM, PRIORITY_MEDIUM, 0, HEARTBEAT_PERIOD_US);
 	m_scheduler.addTask(&m_hrtBt);
 
 	m_optflw.init(devices->optflwUart, &m_ahrs);
-	m_log.setTaskInfo(OPTICAL_FLOW_TASK, PRIORITY_HIGH, PRIORITY_HIGH, 0, 20000);
+	m_log.setTaskInfo(OPTICAL_FLOW_TASK, PRIORITY_HIGH, PRIORITY_HIGH, 0, OPT_FLW_PERIOD_US);
 	m_scheduler.addTask(&m_optflw);
 
 }
@@ -192,8 +167,10 @@ void Application::run() {
 
 	m_sbusRx.startSBus();
 
-	TimeTick::delay_ms(2000);
+	buzzerOn();
+	TimeTick::delay_ms(1000);
 //	batteryVoltage = m_meter.getBatteryVoltage();
+	buzzerOff();
 
 	while (1) {
 		m_scheduler.run();
@@ -429,6 +406,10 @@ void Application::checkBlackBloxRead(uint16_t cmd) {
 }
 
 void Application::handleChannelData(SbusData sbusData) {
+	static timetick_us disarmTimer = 0;
+	static bool disarmStarted = false;
+	timetick_us currentTime = TimeTick::getTimeUs();
+
 	m_rxCh.roll = RPY(sbusData.ch[0]);
 	m_rxCh.pitch = RPY(sbusData.ch[1]);
 	m_rxCh.throttle = THROTTLE(sbusData.ch[2]);
@@ -438,11 +419,32 @@ void Application::handleChannelData(SbusData sbusData) {
 	m_rxCh.SR2 = SW(sbusData.ch[6]);
 	m_rxCh.SR1 = SW(sbusData.ch[7]);
 
-	if(m_rxCh.SL2 < 40 && m_rxCh.throttle < 2 && m_rxCh.yaw < 2 && m_rxCh.roll > 98 && m_rxCh.pitch < 2) {
-		m_motorControl.armMotors(true);
+	if(m_rxCh.throttle < 2 && m_rxCh.yaw < 2 && m_rxCh.roll > 98 && m_rxCh.pitch < 2) {
+		if(m_rxCh.SL2 < 40) {
+			m_motorControl.armMotors(true);
+			disarmStarted = false;
+			disarmTimer = 0;
+		}
+		else {
+			NVIC_SystemReset();
+		}
 	}
 	else if(m_rxCh.SL2 > 40) {
-		m_motorControl.armMotors(false);
+		if(disarmStarted && (currentTime - disarmTimer > 400000)) {
+			disarmStarted = false;
+			disarmTimer = 0;
+		}
+		else if(disarmStarted && (currentTime - disarmTimer > 300000)) {
+			m_motorControl.armMotors(false);
+			disarmStarted = false;
+			disarmTimer = 0;
+		}
+		else if(!disarmStarted) {
+			disarmStarted = true;
+			disarmTimer = currentTime;
+		}
+
+
 	}
 
 	checkPIDRequest(m_rxCh.SR1);

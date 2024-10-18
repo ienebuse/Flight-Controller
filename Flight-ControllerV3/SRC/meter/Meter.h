@@ -75,6 +75,7 @@ private:
     static volatile uint32_t m_ChannelValues[3]; 			/**< Array to hold ADC channel values */
     static volatile float VREF;
 	float batteryVoltage{0};
+	timetick_us m_lastTime;
 };
 
 #endif /* METER_METER_H_ */

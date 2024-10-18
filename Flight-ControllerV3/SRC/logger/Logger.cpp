@@ -20,6 +20,9 @@
 //#define FSLP_BYTE_ESCAPE_FLAG_ESCAPED = 0x91
 //#define FSLP_BYTE_ESCAPED_DELTA = 0x0D
 
+#define RX_BYTE_START_FLAG1	0x85
+#define RX_BYTE_START_FLAG2	0x8B
+
 typedef struct __attribute__ ((packed)) {
 	const uint8_t startByte 	= BYTE_START_FLAG1;
 	const uint8_t id			= BYTE_ESCAPE_FLAG;
@@ -30,7 +33,30 @@ typedef struct __attribute__ ((packed)) {
 }Log_Packet_t;
 
 
+typedef struct __attribute__ ((packed)) {
+	uint8_t axis;
+	float p;
+	float i;
+	float d;
+	uint8_t crc;
+}PID_Axis_Packet_t;
 
+typedef struct __attribute__ ((packed)) {
+	uint8_t axis;
+	float rollP;
+	float rollI;
+	float rollD;
+	float pitchP;
+	float pitchI;
+	float pitchD;
+	float yawP;
+	float yawI;
+	float yawD;
+	uint8_t crc;
+}PID_Axes_Packet_t;
+
+
+const uint8_t Logger::MAX_BUFFER_SIZE;
 
 Logger::Logger(AHRS* ahrs, MotorControl* mtor, Meter* meter, GPS* gps, Barometer* baro, OpticalFlow* optFlw) :iLogger(ahrs, mtor, meter, gps, baro, optFlw) {
 	// TODO Auto-generated constructor stub
@@ -133,5 +159,93 @@ void Logger::log(timetick_us currenTimeUs) {
 		HAL_UART_Transmit_DMA(m_uart, (uint8_t*) buffer, packtSize + 6);
 		Application::sUartTxReady = false;
 		pcktIndx  = (pcktIndx + 1) % 4;
+	}
+}
+
+void Logger::handleRxInterrupt(bool reset) {
+	if(reset) {
+		m_state = 0;
+	}
+	uint8_t remLen = 1;
+	uint8_t data;
+	switch(m_state) {
+		case 0:
+			data = rx_buffer[0];
+			if(data == RX_BYTE_START_FLAG1) {
+				m_state = 1;
+				remLen = 1;
+			}
+			break;
+		case 1:
+			data = rx_buffer[0];
+			if(data == RX_BYTE_START_FLAG2) {
+				m_state = 2;
+				remLen = 1;
+			}
+			else {
+				m_state = 0;
+				remLen = 1;
+			}
+			break;
+		case 2:
+			remLen = rx_buffer[0];
+			m_state = 3;
+			break;
+		case 3:
+			uint8_t axis = rx_buffer[0];
+			uint8_t crc = 0;
+
+			if(axis >= 0 && axis < 3) {
+				PID_Axis_Packet_t* data = (PID_Axis_Packet_t*)rx_buffer;
+				crc = data->crc;
+				uint8_t crc_eval = checkSum((uint8_t*)data, sizeof(PID_Axis_Packet_t)-1);
+				if(crc == crc_eval) {
+					m_motor->setPIDGains((eAxis)data->axis, data->p, data->i, data->d);
+				}
+			}
+			else if(axis == 3) {
+				PID_Axes_Packet_t* data = (PID_Axes_Packet_t*)rx_buffer;
+				crc = data->crc;
+				uint8_t crc_eval = checkSum((uint8_t*)data, sizeof(PID_Axis_Packet_t)-1);
+				if(crc == crc_eval) {
+					m_motor->setPIDGains(ROLL, data->rollP, data->rollI, data->rollD);
+					m_motor->setPIDGains(PITCH, data->pitchP, data->pitchI, data->pitchD);
+					m_motor->setPIDGains(YAW, data->yawP, data->yawI, data->yawD);
+				}
+			}
+
+			m_state = 0;
+			remLen = 1;
+			break;
+	}
+
+	HAL_UART_Receive_DMA(m_uart, rx_buffer, remLen);
+}
+
+void Logger::handleUSBRxData(uint8_t* rxData) {
+	uint8_t crc = 0;
+
+	if((rxData[0] == RX_BYTE_START_FLAG1) && (rxData[1] == RX_BYTE_START_FLAG2) && ((rxData[2] == 14) || (rxData[2] == 38))) {
+
+		uint8_t axis = rxData[3];
+
+		if(axis >= 0 && axis < 3) {
+			PID_Axis_Packet_t* data = (PID_Axis_Packet_t*)&rxData[3];
+			crc = data->crc;
+			uint8_t crc_eval = checkSum((uint8_t*)data, sizeof(PID_Axis_Packet_t)-1);
+			if(crc == crc_eval) {
+				m_motor->setPIDGains((eAxis)data->axis, data->p, data->i, data->d);
+			}
+		}
+		else if(axis == 3) {
+			PID_Axes_Packet_t* data = (PID_Axes_Packet_t*)&rxData[3];
+			crc = data->crc;
+			uint8_t crc_eval = checkSum((uint8_t*)data, sizeof(PID_Axis_Packet_t)-1);
+			if(crc == crc_eval) {
+				m_motor->setPIDGains(ROLL, data->rollP, data->rollI, data->rollD);
+				m_motor->setPIDGains(PITCH, data->pitchP, data->pitchI, data->pitchD);
+				m_motor->setPIDGains(YAW, data->yawP, data->yawI, data->yawD);
+			}
+		}
 	}
 }

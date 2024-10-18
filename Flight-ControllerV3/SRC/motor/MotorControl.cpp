@@ -30,10 +30,10 @@ void MotorControl::init(TIM_HandleTypeDef* htim) {
 	m_throttlePid.setGains(THROTTLE_PID_Kp, THROTTLE_PID_Ki, THROTTLE_PID_Kd);
 	m_throttlePid.setLimits(0,100);
 
-	m_xPosPID.setLimits(-100,100);
-	m_xPosPID.setGains(POS_PID_Kp, POS_PID_Ki, POS_PID_Kd);
-	m_yPosPID.setLimits(-100,100);
-	m_yPosPID.setGains(POS_PID_Kp, POS_PID_Ki, POS_PID_Kd);
+	m_xPosPID.setLimits(-20,20);
+	m_xPosPID.setGains(POS_PID_Kp, POS_PID_Ki, POS_PID_Kd, POS_PID_rKp);
+	m_yPosPID.setLimits(-20,20);
+	m_yPosPID.setGains(POS_PID_Kp, POS_PID_Ki, POS_PID_Kd, POS_PID_rKp);
 
 	for(uint8_t m = 0; m < 4; m++) {
 		m_motor[m].instance.init(htim, m+1, DSHOT600);
@@ -133,95 +133,138 @@ Vector_t<float> MotorControl::getLocalPos(Vector_t<float> wPos, float yaw) {
 	return lPos;
 }
 
+float MotorControl::scalePid(float pid) {
+	float val = (pid + 100)*PID_MAX_SCALE/200;
+	return val;
+}
+
+static float scaleMotor(float mVal, float min, float max) {
+	float m = (mVal - min) * PID_MAX_SCALE / (max - min);
+	return m;
+}
+
 //sMotor* MotorControl::run(Attitude currentAttitude,  Channel* rxCh, timetick_us currentTime) {
 void MotorControl::run(Attitude currentAttitude,  Channel* rxCh, timetick_us currentTime) {
 	static float heightSetpoint = HOVER_HEIGHT;
 	static timetick_us lastTime = 0;
 	static float lastHeight = 0;
 	static float heightRate = 0;
-	static float throttle = 0;
-	float dT = (float)(currentTime - lastTime)/1000000;
+	float throttle = 0;
+	float dT = (float)(FLIGHT_CONTROL_PERIOD_US)/1000000;
 	static float lastHeightControl = 0;
-	float heightControl_dT = 0;
+	static float heightControl_dT = (float)OPT_FLW_PERIOD_US/1000000;
 	bool HOVER = false;
-	float rollAngle;
-	float pitchAngle;
+	static float rollAngle, rollSetPoint;
+	float pitchAngle, pitchSetPoint;
+	static float throttleVal = 0, throttlePid = 0;
+	bool idle = false;
+	static uint8_t lastSR1 = 100;
+
+	float rollPIDSetPoint = 0, pitchPIDSetPoint = 0;
 
 
 	if(m_isArmed) {
 		float m1=0,m2=0,m3=0,m4=0;
 		CNTRL_Type controlType = CONTROL_POS;
+		if(rxCh->SR1 > 40 || rxCh->pitch != 50 || rxCh->roll != 50) {
+			m_optflw->resetPos();
+			m_xPosPID.reset();
+			m_yPosPID.reset();
+		}
+		lastSR1 = rxCh->SR1;
 
 		OptFlw_Data optFlwData = m_optflw->getOptFlowData();
 		float height = getCurrentHeight(optFlwData.h);
-		if(currentTime - lastHeightControl > 200000) {
-//			heightControl_dT = (float)(currentTime - lastHeightControl)/1000000;
-			heightRate = ((optFlwData.h - lastHeight)/0.2) * 100 /MAX_ALT_RATE;
-			lastHeight = optFlwData.h;
-			lastHeightControl = currentTime;
-		}
 
-		m_pid[ROLL].updateSetpoint(100-rxCh->roll);
-		m_pid[PITCH].updateSetpoint(rxCh->pitch);
-		m_pid[YAW].updateSetpoint(rxCh->yaw);
-
-		if(rxCh->SR1 > 60 && optFlwData.h > 250 && currentTime - lastTime > 1000000) {
-			//Decend gradually
-			heightSetpoint = optFlwData.h - 100;
-			m_throttlePid.updateSetpoint(heightSetpoint, PID_THROTTLE);
-			lastTime = currentTime;
-		}
-		else if(rxCh->SR1 > 60 && optFlwData.h < 250) {
-			return;
-		}
-		else if(rxCh->SR1 < 40 && rxCh->pitch == 50 && rxCh->roll == 50) {
+		if(rxCh->SR1 < 40 && rxCh->pitch == 50 && rxCh->roll == 50) {
 			// HOVER CONDITION
-			if(optFlwData.h > 200) {
+			if(optFlwData.h > 350) {
 				HOVER = true;
 			}
 			controlType = CONTROL_POS;
 			m_throttlePid.updateSetpoint(HOVER_HEIGHT, PID_THROTTLE);
 		}
+		else if(rxCh->SR1 > 60 && optFlwData.h > 250) {
+			if(currentTime - lastTime > 1000000) {
+				//Decend gradually
+				heightSetpoint = optFlwData.h - 100;
+				m_throttlePid.updateSetpoint(heightSetpoint, PID_THROTTLE);
+				lastTime = currentTime;
+			}
+		}
+		else if(rxCh->SR1 > 60 && optFlwData.h < 250) {
+			idle = true;
+		}
 		else if(rxCh->SR1 > 40 && rxCh->SR1 < 60) {
 			controlType = CONTROL_RATE;
-//			m_throttlePid.updateSetpoint(rxCh->throttle, PID_THROTTLE);
 			m_throttlePid.updateSetpoint(HOVER_HEIGHT, PID_THROTTLE);
 		}
 		else {
 			controlType = CONTROL_POS;
-//			m_throttlePid.updateSetpoint(rxCh->throttle, PID_THROTTLE);
 			m_throttlePid.updateSetpoint(HOVER_HEIGHT, PID_THROTTLE);
 		}
 
 
+//		HOVER = true;
+
+		bool HEIGHT_CONTROL = false;
+
+		if(currentTime - lastHeightControl > 20000) {
+			HEIGHT_CONTROL = true;
+			lastHeightControl = currentTime;
+		}
+
 		if(HOVER) {
-			rollAngle = m_yPosPID.run(optFlwData.py, optFlwData.vy, controlType, PID_ROLL, MODE_D_LOOP, dT);
-			pitchAngle = m_xPosPID.run(optFlwData.px, optFlwData.vx, controlType, PID_PITCH, MODE_D_LOOP, dT);
+			rollPIDSetPoint = m_yPosPID.run(optFlwData.py, optFlwData.vy, CONTROL_POS, PID_POS, MODE_D_LOOP, dT);
+			pitchPIDSetPoint = m_xPosPID.run(optFlwData.px, optFlwData.vx, CONTROL_POS, PID_POS, MODE_D_LOOP, dT);
+
+			rollSetPoint = (rollPIDSetPoint - RPY_MIN_ANGLE) * 100 / (RPY_MAX_ANGLE - RPY_MIN_ANGLE);
+			pitchSetPoint = (pitchPIDSetPoint - RPY_MIN_ANGLE) * 100 / (RPY_MAX_ANGLE - RPY_MIN_ANGLE);
 		}
 		else {
-			rollAngle = scaleAngle(currentAttitude.euler.r, ROLL);
-			pitchAngle = scaleAngle(currentAttitude.euler.p, PITCH);
+			rollSetPoint = 100-rxCh->roll;
+			pitchSetPoint = rxCh->pitch;
 		}
 
-		float rollRate = scaleAngleRate(currentAttitude.gyro.x, ROLL);
 
+		m_pid[ROLL].updateSetpoint(rollSetPoint);
+		m_pid[PITCH].updateSetpoint(pitchSetPoint);
+		m_pid[YAW].updateSetpoint(rxCh->yaw);
+
+
+		rollAngle = scaleAngle(currentAttitude.euler.r, ROLL);
+		pitchAngle = scaleAngle(currentAttitude.euler.p, PITCH);
+
+		float rollRate = scaleAngleRate(currentAttitude.gyro.x, ROLL);
 		float pitchRate = scaleAngleRate(currentAttitude.gyro.y, PITCH);
 
 		float yawAngle = scaleAngle(currentAttitude.euler.y, YAW);
 		float yawRate = scaleAngleRate(-currentAttitude.gyro.z, YAW);
 
 
-
-
 		float rollPid = m_pid[ROLL].run(rollAngle, rollRate, controlType, PID_ROLL, MODE_D_LOOP, dT);
 		float pitchPid = m_pid[PITCH].run(pitchAngle, pitchRate, controlType, PID_PITCH, MODE_D_LOOP, dT);
-		float yawPid = m_pid[YAW].run(yawAngle, yawRate, controlType, PID_YAW, MODE_D_LOOP, dT);
+		float yawPid = m_pid[YAW].run(yawAngle, yawRate, CONTROL_RATE, PID_YAW, MODE_D_LOOP, dT);
 
-		if(currentTime - lastHeightControl > 20000) {
-			throttle = m_throttlePid.run(height, -heightRate, CONTROL_POS, PID_THROTTLE, MODE_S_LOOP, dT);
-			tPID = throttle;
 
+//		throttleVal = throttle;
+
+		if(rxCh->SL1 > 40 && rxCh->SL1 < 60) {
+			if(HEIGHT_CONTROL) {
+				throttle = m_throttlePid.run(height, heightRate, CONTROL_POS, PID_THROTTLE, MODE_S_LOOP, heightControl_dT);
+				throttleVal = throttle;
+				throttlePid = throttleVal;
+
+				tPID = throttlePid;
+			}
 		}
+		else {
+			throttleVal = rxCh->throttle;
+			throttle = 0;
+			m_throttlePid.reset();
+			throttlePid = 0;
+		}
+
 		/*
 		 * 	M4				 M2
 		 *  cw *          *  ccw
@@ -233,38 +276,34 @@ void MotorControl::run(Attitude currentAttitude,  Channel* rxCh, timetick_us cur
 		 *	ccw				cw
 		*/
 
+		m1 = -pitchPid + rollPid + yawPid;
+		m2 = pitchPid + rollPid - yawPid;
+		m3 = -pitchPid - rollPid - yawPid;
+		m4 = pitchPid - rollPid + yawPid;
 
-//		m1 = rxCh->throttle - pitchPid + rollPid + yawPid;
-//		m2 = rxCh->throttle + pitchPid + rollPid - yawPid;
-//		m3 = rxCh->throttle - pitchPid - rollPid - yawPid;
-//		m4 = rxCh->throttle + pitchPid - rollPid + yawPid;
-
-		m1 = throttle - pitchPid + rollPid + yawPid;
-		m2 = throttle + pitchPid + rollPid - yawPid;
-		m3 = throttle - pitchPid - rollPid - yawPid;
-		m4 = throttle + pitchPid - rollPid + yawPid;
+		m1 += throttleVal;
+		m2 += throttleVal;
+		m3 += throttleVal;
+		m4 += throttleVal;
 
 		m1 = motorConstraint(m1);
 		m2 = motorConstraint(m2);
 		m3 = motorConstraint(m3);
 		m4 = motorConstraint(m4);
 
-		if(rxCh->SR2 > 40) {
-			setMotorsSpeed(10, 10, 10, 10);
+		if(rxCh->SR2 > 40 || idle) {
+			setMotorsSpeed(MOTOR_IDLE_STATE, MOTOR_IDLE_STATE, MOTOR_IDLE_STATE, MOTOR_IDLE_STATE);
 		}
 		else {
-			setMotorsSpeed(m1*MOTOR_LIMIT_SCALE, m2*MOTOR_LIMIT_SCALE, m3*MOTOR_LIMIT_SCALE, m4*MOTOR_LIMIT_SCALE);
+			setMotorsSpeed(m1, m2, m3, m4);
 		}
 
-		m_pidVals.throttle = throttle;
+		m_pidVals.throttle = throttlePid;
 		m_pidVals.roll = rollPid;
 		m_pidVals.pitch = pitchPid;
 		m_pidVals.yaw = yawPid;
-		m_pidVals.pos_y = rollAngle;
-		m_pidVals.pos_x = pitchAngle;
-
-
-//		return m_motor;
+		m_pidVals.pos_y = rollPIDSetPoint;
+		m_pidVals.pos_x = pitchPIDSetPoint;
 	}
 }
 
