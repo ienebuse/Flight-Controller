@@ -68,6 +68,7 @@ void MotorControl::armMotors(bool shouldArm) {
 			TimeTick::delay_ms(1);
 		}
 		m_isArmed = true;
+		LAND = false;
 	}
 	else {
 		m_isArmed = false;
@@ -158,8 +159,6 @@ void MotorControl::run(Attitude currentAttitude,  Channel* rxCh, timetick_us cur
 	float pitchAngle, pitchSetPoint;
 	static float throttleVal = 0, throttlePid = 0;
 	bool idle = false;
-	static uint8_t lastSR1 = 100;
-
 	float rollPIDSetPoint = 0, pitchPIDSetPoint = 0;
 
 
@@ -171,38 +170,45 @@ void MotorControl::run(Attitude currentAttitude,  Channel* rxCh, timetick_us cur
 			m_xPosPID.reset();
 			m_yPosPID.reset();
 		}
-		lastSR1 = rxCh->SR1;
 
 		OptFlw_Data optFlwData = m_optflw->getOptFlowData();
 		float height = getCurrentHeight(optFlwData.h);
 
-		if(rxCh->SR1 < 40 && rxCh->pitch == 50 && rxCh->roll == 50) {
+		if(rxCh->SL1 < 40 && optFlwData.h > 250) {
+			LAND = true;
+		}
+
+		if(rxCh->SR1 < 40) {
 			// HOVER CONDITION
-			if(optFlwData.h > 350) {
+			if(rxCh->pitch == 50 && rxCh->roll == 50 && optFlwData.h > 350) {
 				HOVER = true;
 			}
 			controlType = CONTROL_POS;
-			m_throttlePid.updateSetpoint(HOVER_HEIGHT, PID_THROTTLE);
-		}
-		else if(rxCh->SR1 > 60 && optFlwData.h > 250) {
-			if(currentTime - lastTime > 1000000) {
-				//Decend gradually
-				heightSetpoint = optFlwData.h - 100;
-				m_throttlePid.updateSetpoint(heightSetpoint, PID_THROTTLE);
-				lastTime = currentTime;
-			}
-		}
-		else if(rxCh->SR1 > 60 && optFlwData.h < 250) {
-			idle = true;
+//			m_throttlePid.updateSetpoint(HOVER_HEIGHT, PID_THROTTLE);
 		}
 		else if(rxCh->SR1 > 40 && rxCh->SR1 < 60) {
-			controlType = CONTROL_RATE;
-			m_throttlePid.updateSetpoint(HOVER_HEIGHT, PID_THROTTLE);
+			controlType = CONTROL_POS;
+//			m_throttlePid.updateSetpoint(HOVER_HEIGHT, PID_THROTTLE);
 		}
 		else {
-			controlType = CONTROL_POS;
-			m_throttlePid.updateSetpoint(HOVER_HEIGHT, PID_THROTTLE);
+			controlType = CONTROL_RATE;
+//			m_throttlePid.updateSetpoint(HOVER_HEIGHT, PID_THROTTLE);
 		}
+
+		if(LAND) {
+			if(optFlwData.h > 250) {
+				if(currentTime - lastTime > 1000000) {
+					//Decend gradually
+					heightSetpoint = optFlwData.h - 200;
+//					m_throttlePid.updateSetpoint(heightSetpoint, PID_THROTTLE);
+					lastTime = currentTime;
+				}
+			}
+			else if(optFlwData.h < 250) {
+				idle = true;
+			}
+		}
+
 
 
 //		HOVER = true;
@@ -251,6 +257,7 @@ void MotorControl::run(Attitude currentAttitude,  Channel* rxCh, timetick_us cur
 
 		if(rxCh->SL1 > 40 && rxCh->SL1 < 60) {
 			if(HEIGHT_CONTROL) {
+				m_throttlePid.updateSetpoint(heightSetpoint, PID_THROTTLE);
 				throttle = m_throttlePid.run(height, heightRate, CONTROL_POS, PID_THROTTLE, MODE_S_LOOP, heightControl_dT);
 				throttleVal = throttle;
 				throttlePid = throttleVal;
@@ -258,7 +265,7 @@ void MotorControl::run(Attitude currentAttitude,  Channel* rxCh, timetick_us cur
 				tPID = throttlePid;
 			}
 		}
-		else {
+		else if(rxCh->SL1 > 60) {
 			throttleVal = rxCh->throttle;
 			throttle = 0;
 			m_throttlePid.reset();
@@ -291,7 +298,7 @@ void MotorControl::run(Attitude currentAttitude,  Channel* rxCh, timetick_us cur
 		m3 = motorConstraint(m3);
 		m4 = motorConstraint(m4);
 
-		if(rxCh->SR2 > 40 || idle) {
+		if(rxCh->SR2 > 40 || idle || optFlwData.h > 2000) {
 			setMotorsSpeed(MOTOR_IDLE_STATE, MOTOR_IDLE_STATE, MOTOR_IDLE_STATE, MOTOR_IDLE_STATE);
 		}
 		else {

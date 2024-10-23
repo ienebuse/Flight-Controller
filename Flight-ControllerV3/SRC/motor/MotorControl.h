@@ -158,6 +158,7 @@ private :
 	PID m_xPosPID, m_yPosPID;
 
 	bool m_isArmed = false;
+	bool LAND = false;
 	float tPID = 0;
 	Pid_Vals m_pidVals;
 };
