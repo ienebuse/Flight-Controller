@@ -57,6 +57,8 @@ void increamentAppTickuS();
 
 void usbCDCRxCallback(uint8_t* rxData);
 
+void usbCDCTxComplete();
+
 #ifdef __cplusplus
 }
 #endif

@@ -46,14 +46,7 @@ public:
 		m_backCalculationGain = 0.8*m_Ki;
 	}
 
-	inline void updateSetpoint(float newSetpoint, PID_Type pidType = PID_ROLL) {
-		if(pidType == PID_THROTTLE) {
-			m_setPoint = newSetpoint/OPTICAL_FLOW_MAX_HEIGHT * 100;
-		}
-		else {
-			m_setPoint = 2*(newSetpoint - 50);
-		}
-	}
+	void updateSetpoint(float newSetpoint, PID_Type pidType = PID_ROLL);
 
 	inline void setLimits(float lowLimit, float highLimit) {
 		m_lowLimit = lowLimit;

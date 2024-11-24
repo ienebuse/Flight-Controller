@@ -11,6 +11,7 @@
 #include <usart.h>
 #include <string.h>
 #include <stdio.h>
+#include <Configurator.h>
 
 #define _SensorData(f) -f.acc.x, -f.acc.y, f.acc.z, -f.gyro.x*DEG2RAD, -f.gyro.y*DEG2RAD, f.gyro.z*DEG2RAD, -f.mag.y, f.mag.x, f.mag.z
 #define _SensorDataNoMag(f) -f.acc.x, -f.acc.y, f.acc.z, -f.gyro.x*DEG2RAD, -f.gyro.y*DEG2RAD, f.gyro.z*DEG2RAD
@@ -136,7 +137,7 @@ void AHRS::init(SPI_Config config1, SPI_Config config2, I2C_config mag_config) {
 //	a1 = 2.0 * (ita*ita - 1.0) * b0;
 //	a2 = -(1.0 - q*ita + ita*ita) * b0;
 
-#if defined USE_MADGWICK_FUSION
+#if USE_MADGWICK_FUSION
 	filter.init();
 #endif
 
@@ -155,7 +156,7 @@ void AHRS::init(SPI_Config config1, SPI_Config config2, I2C_config mag_config) {
 
 #if (USE_MAGNETOMETER == 1)
 	setCompassRef();
-#ifdef USE_EKF
+#if USE_EKF
 	filter.init(getCompassRef());
 #endif
 #endif
@@ -219,7 +220,7 @@ void AHRS::updateSensorData() {
 //	sendData((uint8_t*)data, strlen(data));
 	t2 = currentTime;
 #if (USE_MAGNETOMETER == 1)
-	if(currentTime - lastTime >= 100000) {
+	if(currentTime - lastTime >= MAG_ACQ_TIME_US) {
 //		HAL_GPIO_WritePin(TP_GPIO_Port, TP_Pin, GPIO_PIN_SET);
 		CompassData compassData = m_compassSensor.getCompass();
 		m_sensorData.mag.x = compassData.mag.x;
@@ -273,19 +274,11 @@ Vector_t<float> AHRS::getGroundAcc(Vector_t<float> a) {
 Attitude AHRS::fushionUpdate(float dT) {
 	m_dT = dT;
 	updateSensorData();
-#if defined USE_MADGWICK || defined USE_VQF
-//	if(m_magAvailable) {
 	filter.update(_SensorData(m_sensorData), dT, m_magAvailable);
-//	}
-//	else {
-//		filter.update(_SensorDataNoMag(m_sensorData), dT);
-//	}
-#else
-	filter.update(_SensorData(m_sensorData), dT, m_magAvailable);
-#endif
 
-#if defined USE_MADGWICK_FUSION
-#elif defined USE_COMP || defined USE_EKFT
+#if USE_MADGWICK_FUSION
+
+#elif USE_COMP || defined USE_EKFT
 	m_attitude.quat = euler2Quaternion(m_attitude.euler);
 #else
 	m_attitude.euler = quat2Euler(m_attitude.quat);

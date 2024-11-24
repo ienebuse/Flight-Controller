@@ -9,10 +9,10 @@
 #define ILOGGER_H_
 
 #include <TimeTick.h>
-#include <MotorControl.h>
 #include <AHRS.h>
 #include <meter/Meter.h>
 #include <barometer/Barometer.h>
+#include <FlightControl.h>
 #include <GPS.h>
 #include <OpticalFlow.h>
 
@@ -22,7 +22,7 @@
 
 class iLogger : public Task {
 public:
-	iLogger(AHRS* ahrs, MotorControl* mtor, Meter* meter, GPS* gps, Barometer* baro, OpticalFlow* optFlw);
+	iLogger(AHRS* ahrs, FlightControl* mtor, Meter* meter, GPS* gps, Barometer* baro, OpticalFlow* optFlw);
 	virtual ~iLogger();
 	
 	virtual void init(UART_HandleTypeDef* huart);
@@ -58,7 +58,7 @@ public:
 protected:
 	static UART_HandleTypeDef* m_uart;
 	AHRS* m_ahrs;
-	MotorControl* m_motor;
+	FlightControl* m_motor;
 	Meter* m_meter;
 	GPS* m_gps;
 	Barometer* m_barometer;

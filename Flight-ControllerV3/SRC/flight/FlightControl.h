@@ -5,8 +5,8 @@
  *      Author: Ikenna
  */
 
-#ifndef MOTOR_MOTORCONTROL_H_
-#define MOTOR_MOTORCONTROL_H_
+#ifndef FLIGHT_FLIGHTCONTROL_H_
+#define FLIGHT_FLIGHTCONTROL_H_
 
 #include <DShot.h>
 #include <PID.h>
@@ -69,15 +69,18 @@ typedef enum {
 	ROLL,
 	PITCH,
 	YAW,
+	PX,
+	PY,
+	THROTTLE,
 	eNUM_AXIS,
 }eAxis;
 
 
 
-class MotorControl: public Task {
+class FlightControl: public Task {
 public:
-	MotorControl(AHRS *ahrs, OpticalFlow* optflw, Channel* rxCh);
-	virtual ~MotorControl();
+	FlightControl(AHRS *ahrs, OpticalFlow* optflw, Channel* rxCh);
+	virtual ~FlightControl();
 
 	void init(TIM_HandleTypeDef* htim);
 
@@ -85,7 +88,9 @@ public:
 
 	void setMotorSpeed(eMotor m, uint8_t speed);
 
-	void setMotorsSpeed(float sM1, float sM2, float sM3, float sM4);
+	void setMotorsSpeed(float speed);
+
+	void setMotorsSpeed(float frontRight, float rearRight, float frontLeft, float rearLeft);
 
 	inline ControlLog getLog() {
 		Channel channel;
@@ -115,15 +120,16 @@ public:
 		return log;
 	}
 
-	inline float getCurrentHeight(float height) {
-		float currentHeight = 100 * height / OPTICAL_FLOW_MAX_HEIGHT;
-		return currentHeight;
-	}
+	float getCurrentHeight(float height);
 
 	void increamentPID(eAxis axis, float p, float i, float d);
 
 	void setPIDGains(eAxis axis, float p, float i, float d) {
 		m_pid[axis].setGains(p, i, d);
+	}
+
+	void setPIDGains(eAxis axis, float p, float i, float d, float rp) {
+		m_pid[axis].setGains(p, i, d, rp);
 	}
 
 	inline Pid_Gains getPID(eAxis axis) {
@@ -154,13 +160,12 @@ private :
 
 	sMotor m_motor[4];
 	PID m_pid[eNUM_AXIS];
-	PID m_throttlePid;
-	PID m_xPosPID, m_yPosPID;
+//	PID m_throttlePid;
+//	PID m_xPosPID, m_yPosPID;
 
 	bool m_isArmed = false;
 	bool LAND = false;
-	float tPID = 0;
 	Pid_Vals m_pidVals;
 };
 
-#endif /* MOTOR_MOTORCONTROL_H_ */
+#endif /* FLIGHT_FLIGHTCONTROL_H_ */

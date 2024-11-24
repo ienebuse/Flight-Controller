@@ -745,10 +745,10 @@ class MainWindow(QMainWindow):
             self.mouseDown = True
             self.start_point = QPoint(event.xdata, event.ydata)
             # self.update()
-            print(f"Left button clicked at: {event.xdata}, {event.ydata}")
+            # print(f"Left button clicked at: {event.xdata}, {event.ydata}")
         elif(event.button == 3):
             self.cursorDown = True
-            print(f"Right button clicked at: {event.xdata}, {event.ydata}")
+            # print(f"Right button clicked at: {event.xdata}, {event.ydata}")
             # self.update()
 
     def on_mouseReleased(self, event):
@@ -777,7 +777,7 @@ class MainWindow(QMainWindow):
                 self.windowSize = self.hPos - self.lPos
                 
 
-                print(f"Left button released at: {event.xdata}, {event.ydata}")
+                # print(f"Left button released at: {event.xdata}, {event.ydata}")
                 # self.update()
             else:
                 self.mouseDown = False
@@ -786,14 +786,14 @@ class MainWindow(QMainWindow):
         
         elif(event.button == 3):
             self.cursorDown = False
-            print(f"Right button released at: {event.xdata}, {event.ydata}")
+            # print(f"Right button released at: {event.xdata}, {event.ydata}")
             # self.update()
 
     def on_mouseDragged(self, event):
         if(self.mouseDown):
             self.mouseDragged = True
             self.end_point = QPoint(event.xdata, event.ydata)
-            print('Left mouse dragged')
+            # print('Left mouse dragged')
             # self.update()
         elif(self.cursorDown and event.xdata != None):
             pos = max(0,event.xdata)
@@ -818,7 +818,7 @@ class MainWindow(QMainWindow):
             if(val4 != None):
                 for i, v in enumerate(val4):
                     self.chart4Values[i].setText(str(v))
-            print('Right cursor dragged')
+            # print('Right cursor dragged')
             self.updateBlock(int(pos + self.windowOffset))
             self.updateMotor(int(pos + self.windowOffset))
             self.updateVelocity(int(pos + self.windowOffset))
@@ -841,7 +841,7 @@ class MainWindow(QMainWindow):
 
     def updateVelocity(self, pos):
         self.velView.update_vel(params[15].data[pos]/5,params[16].data[pos]/5)
-        print(params[15].data[pos],params[16].data[pos])
+        # print(params[15].data[pos],params[16].data[pos])
 
     def setVel(self):
         # super().paintEvent(event)

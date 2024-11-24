@@ -36,7 +36,6 @@ private:
 	uint32_t motor_dmabuffer[DSHOT_DMA_BUFFER_SIZE];
 	static uint8_t s_ChIdx;
 	uint8_t m_ChIdx;
-
 	TIM_HandleTypeDef* m_Tmr;
 	uint32_t m_Channel;
 	static uint16_t m_DmaID[4];
@@ -45,17 +44,12 @@ private:
 	uint32_t m_TmrFreq;
 	eDshot_Type em_DshotType;
 
-
-
 	uint32_t getType(eDshot_Type dshot_type);
 	void setTimer(eDshot_Type dshot_type);
 	static void dmaTcCallback(DMA_HandleTypeDef *hdma);
 	void registerTcCallbackFunction();
 	void startPwm();
-
 	uint16_t getDmaID();
-
-
 	uint16_t getPacket(uint16_t value);
 	void loadDmaBuffer(uint16_t value);
 	void prepare_dmabuffer_all();

@@ -53,8 +53,10 @@ bool HMC5883L::initCompass(I2C_Bus* i2cBus, devAddr_t devAddr)
     
     setMeasurementMode(Mode_Continuous);
 
-//    calibrate();
+    calibrate();
 //    calibrateExt();
+
+    setMagneticDeclination(Configurator::getConfig().MagDeclination);
 
     return true;
 }
@@ -285,6 +287,10 @@ void HMC5883L::calibrateExt() {
 
 		TimeTick::delay_us(66667);
 	}
+}
+
+void HMC5883L::setMagneticDeclination(float degrees) {
+	decl = DEG2RAD*degrees;
 }
 
 void HMC5883L::write(uint8_t address, uint8_t data)

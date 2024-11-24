@@ -37,7 +37,7 @@ TimeOut_Period = 10
 
 # ser = serial.Serial('COM9', 9600)
 # ser = serial.Serial('COM9', 115200)
-ser = serial.Serial('COM16', 256000)
+ser = serial.Serial('COM7', 256000)
 
 should_stop = False
 

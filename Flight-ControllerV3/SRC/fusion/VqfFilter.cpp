@@ -6,6 +6,7 @@
  */
 
 #include <fusion/VqfFilter.h>
+#include <Configurator.h>
 
 VqfFilter::VqfFilter(Attitude* att) : Filter(att), m_vqf((float)IMU_SAMPLING_PERIOD_US/1000000, (float)IMU_SAMPLING_PERIOD_US/1000000, 0.1f) {
 	// TODO Auto-generated constructor stub

@@ -123,8 +123,8 @@ int main(void)
   HAL_NVIC_DisableIRQ(USART2_IRQn);				 // Disable the USART2 interrupt in the NVIC
 
   __HAL_UART_DISABLE(&hlpuart1);
-	__HAL_UART_DISABLE_IT(&hlpuart1, UART_IT_RXNE);  // Disable RXNE (Receive Not Empty) interrupt
-	HAL_NVIC_DisableIRQ(LPUART1_IRQn);				 // Disable the USART2 interrupt in the NVIC
+  __HAL_UART_DISABLE_IT(&hlpuart1, UART_IT_RXNE);  // Disable RXNE (Receive Not Empty) interrupt
+  HAL_NVIC_DisableIRQ(LPUART1_IRQn);				 // Disable the USART2 interrupt in the NVIC
 
 	  HAL_Devices_t halDevices = {
 //		.debugUart 	= &huart4,
@@ -136,7 +136,7 @@ int main(void)
 		.motorTmr	= &htim2,
 		.i2cBus 	= &hi2c1,
 		.sBus		= &huart2,
-		.logUart	= &huart3,
+		.configUart	= &huart3,
 		.optflwUart = &hlpuart1,
 	  };
 

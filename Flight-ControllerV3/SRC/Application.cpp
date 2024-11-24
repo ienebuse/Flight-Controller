@@ -38,9 +38,10 @@ bool Application::buzz_state = false;
 
 
 Application::Application() :
-		m_motorControl(&m_ahrs, &m_optflw, &m_rxCh),
-		m_blackBox(&m_ahrs, &m_motorControl, &m_meter, &m_gps, &m_barometer, &m_optflw),
-		m_log(&m_ahrs, &m_motorControl, &m_meter, &m_gps, &m_barometer, &m_optflw)
+		m_flightControl(&m_ahrs, &m_optflw, &m_rxCh),
+		m_blackBox(&m_ahrs, &m_flightControl, &m_meter, &m_gps, &m_barometer, &m_optflw),
+		m_log(&m_ahrs, &m_flightControl, &m_meter, &m_gps, &m_barometer, &m_optflw),
+		m_configurator(&m_ahrs, &m_flightControl, &m_meter, &m_gps, &m_barometer, &m_optflw, &m_blackBox)
 {
 	// TODO Auto-generated constructor stub
 
@@ -84,7 +85,24 @@ void Application::init(HAL_Devices_t *devices) {
 
 	m_devices = devices;
 	TimeTick::init(m_devices->appTmr);
-//	HAL_TIM_Base_Start_IT(m_devices->appTmr);
+
+
+
+	SPI_Config blkBxConfig = {
+			.hspi = devices->bbxSPI,
+			.csPort = BB_CS_GPIO_Port,
+			.csPin = BB_CS_Pin
+	};
+
+	m_blackBox.init(blkBxConfig);
+	m_blackBox.setTaskInfo(BLKBOX_TASK, PRIORITY_MEDIUM, PRIORITY_MEDIUM, 0, BLACKBOX_UPDATEPERIOD_US);
+	m_scheduler.addTask(&m_blackBox);
+
+	m_configurator.init(devices->configUart);
+	m_configurator.setTaskInfo(CONFIG_TAX, PRIORITY_MEDIUM, PRIORITY_MEDIUM, 0, CONFIG_CHECK_PERIOD_US);
+	m_scheduler.addTask(&m_configurator);
+
+	Config config = Configurator::getConfig();
 
 	m_i2cBus.init(devices->i2cBus);
 
@@ -104,55 +122,42 @@ void Application::init(HAL_Devices_t *devices) {
 
 	I2C_config magConfig = {
 			.i2cBus = &m_i2cBus,
-			.devAddr = MAG_DEV_ADDR,
+			.devAddr = Configurator::getConfig().MagDevAddr,
 	};
-
-	SPI_Config blkBxConfig = {
-			.hspi = devices->bbxSPI,
-			.csPort = BB_CS_GPIO_Port,
-			.csPin = BB_CS_Pin
-	};
-
-	m_blackBox.init(devices->logUart, blkBxConfig);
-	m_blackBox.setTaskInfo(BLKBOX_TASK, PRIORITY_MEDIUM, PRIORITY_MEDIUM, 0, 5000);
-	m_scheduler.addTask(&m_blackBox);
 
 	m_ahrs.init(imuConfig1, imuConfig2, magConfig);
 	m_ahrs.setTaskInfo(FUSION_TASK, PRIORITY_REALTIME, PRIORITY_REALTIME, 0, IMU_SAMPLING_PERIOD_US);
 	m_scheduler.addTask(&m_ahrs);
 
-	int i = 0;
-	uint8_t resp;
-
-#if (USE_BAROMETER == 1)
-	m_barometer.init(&m_i2cBus);
-	m_barometer.setTaskInfo(BAROMETER_TASK, PRIORITY_MEDIUM, PRIORITY_MEDIUM, 0, 100000);
-	m_scheduler.addTask(&m_barometer);
-#endif
+	if(config.UseBarometer) {
+		m_barometer.init(&m_i2cBus);
+		m_barometer.setTaskInfo(BAROMETER_TASK, PRIORITY_MEDIUM, PRIORITY_MEDIUM, 0, BAROMETER_PERIOD_US);
+		m_scheduler.addTask(&m_barometer);
+	}
 
 	m_sbusRx.init(devices->sBus, this);
-	m_sbusRx.setTaskInfo(CMD_RX_TASK, PRIORITY_HIGH, PRIORITY_HIGH, 0, 20000);
+	m_sbusRx.setTaskInfo(CMD_RX_TASK, PRIORITY_HIGH, PRIORITY_HIGH, 0, RECEIVER_PERIOD_US);
 	m_scheduler.addTask(&m_sbusRx);
 
-	m_motorControl.init(devices->motorTmr);
-	m_motorControl.setTaskInfo(MOTOR_CONTROL_TASK, PRIORITY_REALTIME, PRIORITY_REALTIME, 0, FLIGHT_CONTROL_PERIOD_US);
-	m_scheduler.addTask(&m_motorControl);
+	m_flightControl.init(devices->motorTmr);
+	m_flightControl.setTaskInfo(FLIGHT_CONTROL_TASK, PRIORITY_REALTIME, PRIORITY_REALTIME, 0, FLIGHT_CONTROL_PERIOD_US);
+	m_scheduler.addTask(&m_flightControl);
 
 	m_meter.init();
-	m_meter.setTaskInfo(METER_TASK, PRIORITY_HIGH, PRIORITY_HIGH, 0, 1000000);
+	m_meter.setTaskInfo(METER_TASK, PRIORITY_HIGH, PRIORITY_HIGH, 0, METER_PERIOD_US);
 	m_scheduler.addTask(&m_meter);
 
-#if (USE_GPS == 1)
-	m_gps.init(devices->gpsUart);
-	m_log.setTaskInfo(GPS_TASK, PRIORITY_LOW, PRIORITY_LOW, 0, 1000000);
-	m_scheduler.addTask(&m_gps);
-#endif
+	if(config.UseGPS) {
+		m_gps.init(devices->gpsUart);
+		m_log.setTaskInfo(GPS_TASK, PRIORITY_LOW, PRIORITY_LOW, 0, GPS_PERIOD_US);
+		m_scheduler.addTask(&m_gps);
+	}
 
-#if (ENABLE_DEBUG == 1)
-	m_log.init(devices->logUart);
-	m_log.setTaskInfo(LOG_TASK, PRIORITY_LOW, PRIORITY_LOW, 0, 30000);
-	m_scheduler.addTask(&m_log);
-#endif
+	if(config.EnableLogging) {
+		m_log.init();
+		m_log.setTaskInfo(LOG_TASK, PRIORITY_LOW, PRIORITY_LOW, 0, LOGGER_PERIOD_US);
+		m_scheduler.addTask(&m_log);
+	}
 
 	m_hrtBt.setTaskInfo(HEARTBEAT_TASK, PRIORITY_MEDIUM, PRIORITY_MEDIUM, 0, HEARTBEAT_PERIOD_US);
 	m_scheduler.addTask(&m_hrtBt);
@@ -421,7 +426,7 @@ void Application::handleChannelData(SbusData sbusData) {
 
 	if(m_rxCh.throttle < 2 && m_rxCh.yaw < 2 && m_rxCh.roll > 98 && m_rxCh.pitch < 2) {
 		if(m_rxCh.SL2 < 40) {
-			m_motorControl.armMotors(true);
+			m_flightControl.armMotors(true);
 			disarmStarted = false;
 			disarmTimer = 0;
 		}
@@ -435,7 +440,7 @@ void Application::handleChannelData(SbusData sbusData) {
 			disarmTimer = 0;
 		}
 		else if(disarmStarted && (currentTime - disarmTimer > 300000)) {
-			m_motorControl.armMotors(false);
+			m_flightControl.armMotors(false);
 			disarmStarted = false;
 			disarmTimer = 0;
 		}

@@ -22,7 +22,7 @@ typedef struct
     TIM_HandleTypeDef	*motorTmr;
     I2C_HandleTypeDef 	*i2cBus;
     UART_HandleTypeDef 	*sBus;
-    UART_HandleTypeDef 	*logUart;
+    UART_HandleTypeDef 	*configUart;
     UART_HandleTypeDef 	*optflwUart;
 } HAL_Devices_t;
 

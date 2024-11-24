@@ -11,6 +11,7 @@
 #include <stm32h7xx.h>
 #include <spi.h>
 #include <typedefs.h>
+#include <string>
 
 ///* at7456 */
 //#define VM0     0x00   ///< Video Mode0
@@ -178,7 +179,7 @@
 //   * @return None
 //   */
 //  void displayString(unsigned char row, unsigned char col, const char *s);
-//  void displayString(unsigned char row, unsigned char col, String s);
+//  void displayString(unsigned char row, unsigned char col, std::string s);
 //
 //  /**
 //   * @fn clear

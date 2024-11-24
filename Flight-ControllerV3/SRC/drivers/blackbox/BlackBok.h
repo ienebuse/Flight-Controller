@@ -34,16 +34,20 @@ typedef struct __attribute__ ((packed)) {
 
 class BlackBok : public iLogger{
 public:
-	BlackBok(AHRS* ahrs, MotorControl* mtor, Meter* meter, GPS* gps, Barometer* baro, OpticalFlow* optFlw);
+	BlackBok(AHRS* ahrs, FlightControl* mtor, Meter* meter, GPS* gps, Barometer* baro, OpticalFlow* optFlw);
 	virtual ~BlackBok();
 
-	void init(UART_HandleTypeDef* huart, SPI_Config config);
+	void init(SPI_Config config);
 
 	BlackBox_Data getPacket(timetick_us currenTimeUs);
 
 	bool eraseData();
 
 	bool eraseConfig();
+
+	void writeConfig(uint8_t page, uint8_t* config, uint16_t size);
+
+	bool readConfig(uint8_t page, uint8_t* config, uint16_t size);
 
 	bool fullErase();
 
@@ -65,6 +69,7 @@ private:
 	bool m_justErased{false};
 
 	BlackBox_Data m_buffer[cm_MAX_LOG];
+	uint8_t m_configBuffer[2048];
 
 //	bool blkBoxReq{false};
 };

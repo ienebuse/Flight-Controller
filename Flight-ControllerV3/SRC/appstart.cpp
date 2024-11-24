@@ -23,8 +23,11 @@
 #include "tim.h"
 #include "gpio.h"
 #include "usart.h"
+#include "Configurator.h"
+#include "config.h"
 //#include "stm32h7xx.h"
 
+Config s_config = Configurator::initConfig();
 static Application app;
 
 /**
@@ -35,10 +38,12 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 	if(huart->Instance == USART3) {
 		Application::sUartTxReady = true;
 	}
-//	if (huart==app.getIMUSender()->getUart())
-//	{
-//		app.getIMUSender()->setReady(true);
-//	}
+
+
+	if (huart==app.getConfigurator()->getUart())
+	{
+		app.getConfigurator()->setReady(true);
+	}
 //
 //	if(huart == app.getNxsSender()->getUart()) {
 //		app.getNxsSender()->setReady(true);
@@ -60,7 +65,7 @@ void HAL_UART_ExRxEventCallback(UART_HandleTypeDef *huart,uint16_t size)
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-	static volatile timetick_us lastSbusData = 0,  lastOptflwData = 0, lastLogRxData = 0;
+	static volatile timetick_us lastSbusData = 0,  lastOptflwData = 0, lastLogRxData = 0, lastConfigData = 0;
 	timetick_us now = TimeTick::getTimeUs();
 
 	if(huart == app.getSbusRx()->getUartRx()->getUart()) {
@@ -78,15 +83,20 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 		lastOptflwData = now;
 	}
 
+	else if(huart == app.getConfigurator()->getUart()) {
+		app.getConfigurator()->handleRxInterrupt(now - lastConfigData > 50000);
+		lastConfigData = now;
+	}
+
 //	else if(huart == iLogger::getUart()) {
 //	else if(huart->Instance == USART3) {
 ////		iLogger::handleInterrupt();
 //	}
 
-	else if(huart == app.getLogger()->getUart()) {
-		app.getLogger()->handleRxInterrupt(now - lastLogRxData > 100000);
-		lastLogRxData = now;
-	}
+//	else if(huart == app.getLogger()->getUart()) {
+//		app.getLogger()->handleRxInterrupt(now - lastLogRxData > 100000);
+//		lastLogRxData = now;
+//	}
 
 }
 
@@ -160,5 +170,9 @@ extern "C" void increamentAppTickuS() {
 
 extern "C" void usbCDCRxCallback(uint8_t* rxData) {
 	app.getLogger()->handleUSBRxData(rxData);
+}
+
+extern "C" void usbCDCTxComplete() {
+	Application::sUartTxReady = true;
 }
 

@@ -9,7 +9,11 @@
 #define AHRS_AHRS_H_
 
 #include <drivers/sensors/ICM42688.h>
-#include <drivers/sensors/HMC5883L.h>
+#if PROTOTYPE
+	#include <drivers/sensors/HMC5883L.h>
+#else
+	#include <drivers/sensors/QMC5883L.h>
+#endif
 #include <typedefs.h>
 #include <fusion/ComplimentaryFilter.h>
 #include <fusion/MadgwickFilter.h>
@@ -89,7 +93,11 @@ private:
 //	BMI270 m_imuSensor1;
 	ICM42688 m_imuSensor1;
 	ICM42688 m_imuSensor2;
+#if PROTOTYPE
 	HMC5883L m_compassSensor;
+#else
+	QMC5883L m_compassSensor;
+#endif
 
 	SensorData m_sensorData;
 	Attitude m_attitude;
@@ -120,17 +128,17 @@ private:
 	double magMean = 0;    // Current mean
 	double magM2 = 0;
 
-#if defined USE_MAHOHY
+#if USE_MAHONY
 	Mahony filter;
-#elif defined USE_MADGWICK
+#elif USE_MADGWICK
 	Madgwick filter;
-#elif defined USE_VQF
+#elif USE_VQF
 	VqfFilter filter;
-#elif defined USE_COMP
+#elif USE_COMP
 	ComplimentaryFilter filter;
-#elif defined USE_EKF
+#elif USE_EKF
 	EKF filter;
-#elif defined USE_MADGWICK_FUSION
+#elif USE_MADGWICK_FUSION
 	MadgwickFusion filter;
 #endif
 

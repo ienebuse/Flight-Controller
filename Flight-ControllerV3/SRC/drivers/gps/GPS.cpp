@@ -382,9 +382,9 @@ void GPS::taskFunc(timetick_us currenTimeUs) {
 	else if(m_rxError) {
 		m_rxError = false;
 	}
-	else if(currenTimeUs - m_startTime > cm_TIMEOUT_US) {
-		m_rxState = 0;
-	}
+//	else if(currenTimeUs - m_startTime > cm_TIMEOUT_US) {
+//		m_rxState = 0;
+//	}
 	posllhRequest();
 //	pvtRequest();
 

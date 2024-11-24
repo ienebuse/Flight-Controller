@@ -15,7 +15,7 @@ typedef struct __attribute__ ((packed)) {
 	timetick_us logTime;
 	AhrsLog ahrsLog;
 	ControlLog ctrlLog;
-	Vector_t<float> optFlw;
+	OptFlw_Data optFlw;
 	float battVoltage;
 	float altitude;
 	float lat;
@@ -25,10 +25,10 @@ typedef struct __attribute__ ((packed)) {
 
 class Logger : public iLogger{
 public:
-	Logger(AHRS* ahrs, MotorControl* mtor, Meter* meter, GPS* gps, Barometer* baro, OpticalFlow* optFlw);
+	Logger(AHRS* ahrs, FlightControl* mtor, Meter* meter, GPS* gps, Barometer* baro, OpticalFlow* optFlw);
 	virtual ~Logger();
 
-	virtual void init(UART_HandleTypeDef* huart);
+	virtual void init();
 
 	virtual void log(timetick_us currenTimeUs);
 
@@ -42,6 +42,8 @@ private:
 	static const uint8_t MAX_BUFFER_SIZE{50};
 	uint8_t rx_buffer[MAX_BUFFER_SIZE];
 	uint8_t m_state = 0;
+
+	void getLogData();
 };
 
 #endif /* LOGGER_LOGGER_H_ */

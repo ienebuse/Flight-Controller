@@ -17,7 +17,7 @@
 //AT7456::~AT7456() {
 //	// TODO Auto-generated destructor stub
 //}
-
+//
 //void AT7456::init(SPI_HandleTypeDef *hspi, GPIO_TypeDef *csPort, uint16_t csPin){
 //  pinMode(nCS,OUTPUT);
 //  SPI.begin();
@@ -117,7 +117,7 @@
 //  writeAddrData(VM0, 0x48);
 //}
 //
-//void AT7456::displayString(unsigned char row, unsigned char col, String s){
+//void AT7456::displayString(unsigned char row, unsigned char col, std::string s){
 //  const char *str = s.c_str();
 //  displayString(row,col,str);
 //}
@@ -200,4 +200,4 @@
 //  }
 //  return num;
 //}
-
+//

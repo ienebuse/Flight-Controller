@@ -75,7 +75,6 @@ void DShot::setTimer(eDshot_Type dshot_type) {
 	// Calculate prescaler by dshot type
 	uint16_t dshot_prescaler = lrintf((float) m_TmrFreq / getType(dshot_type) + 0.01f) - 1;
 
-	// motor1
 	__HAL_TIM_SET_PRESCALER(m_Tmr, dshot_prescaler);
 	__HAL_TIM_SET_AUTORELOAD(m_Tmr, MOTOR_BITLENGTH);
 }
@@ -87,7 +86,6 @@ void DShot::dmaTcCallback(DMA_HandleTypeDef *hdma) {
 		if (hdma == htim->hdma[m_DmaID[id]])
 		{
 			__HAL_TIM_DISABLE_DMA(htim, m_DmaID[id]);
-//			HAL_TIM_PWM_Stop(&htim2, TIM_CHANNEL_1);
 			break;
 		}
 	}

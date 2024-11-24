@@ -35,7 +35,7 @@ rMax = pMax = yMax = hMax = -10000000000
 
 # ser = serial.Serial('COM9', 9600)
 # ser = serial.Serial('COM9', 115200)
-ser = serial.Serial('COM16', 256000)
+ser = serial.Serial('COM20', 256000)
 
 should_stop = False
 

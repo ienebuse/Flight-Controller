@@ -12,6 +12,9 @@
 //#include <cmsis_os2.h>
 #include <drivers/sensors/ICM42688.h>
 #include <TimeTick.h>
+#include <Configurator.h>
+
+static Config config;
 
 
 ICM42688::ICM42688()
@@ -27,6 +30,7 @@ ICM42688::ICM42688()
 
 int ICM42688::init(SPI_HandleTypeDef *hspi, GPIO_TypeDef *csPort, uint16_t csPin, uint32_t SPI_HS_CLK)
 {
+	config = Configurator::getConfig();
 	_useSPIHS = false;
 	SPI_HS_CLOCK = SPI_HS_CLK;
 
@@ -100,12 +104,13 @@ void ICM42688::calibrateGyro() {
 		TimeTick::delay_us(100000);
 	}
 
-#if USE_GYRO_FILTER
-	for(int i = 0; i < 1000; i++) {
-		getGyroData();
-		TimeTick::delay_us(IMU_SAMPLING_PERIOD_US);
+
+	if(config.UseGyroFilter) {
+		for(int i = 0; i < 1000; i++) {
+			getGyroData();
+			TimeTick::delay_us(IMU_SAMPLING_PERIOD_US);
+		}
 	}
-#endif
   // set at a lower range (more resolution) since IMU not moving
 //  const GyroFS current_fssel = _gyroFS;
 //  if (setGyroFS(dps250) < 0) return -1;
@@ -172,14 +177,21 @@ Vector_t<float> ICM42688::getAccelData(void) {
 //	  accData.y  *= _accelRange;
 //	  accData.z  *= _accelRange;
 
-#if USE_ACCEL_FILTER
-	  accData.x  = axf.apply(accData.x * _accelRange);
-	  accData.y  = ayf.apply(accData.y * _accelRange);
-	  accData.z  = azf.apply(accData.z * _accelRange);
-#else
-	  accData.x  = (accData.x * _accelRange);
-	  accData.y  = (accData.y * _accelRange);
-	  accData.z  = (accData.z * _accelRange);
+
+	  if(config.UseAccelFilter) {
+		  accData.x  = axf.apply(accData.x * _accelRange);
+		  accData.y  = ayf.apply(accData.y * _accelRange);
+		  accData.z  = azf.apply(accData.z * _accelRange);
+	  }
+	  else {
+		  accData.x  = (accData.x * _accelRange);
+		  accData.y  = (accData.y * _accelRange);
+		  accData.z  = (accData.z * _accelRange);
+	  }
+
+#if !PROTOTYPE
+	  accData.x = -accData.x;
+	  accData.z = -accData.z;
 #endif
 
 	  return accData;
@@ -252,19 +264,22 @@ Vector_t<float> ICM42688::getGyroData(void) {
 	    gyroData.y = (int16_t)(((uint16_t)data[2] << 8) | (uint16_t)data[3]);
 	    gyroData.z = (int16_t)(((uint16_t)data[4] << 8) | (uint16_t)data[5]);
 	  }
-#if USE_GYRO_FILTER
-	  gyroData.x  = gxf.apply(gyroData.x * _gyroRange)  - m_gyrB[0];
-	  gyroData.y  = gyf.apply(gyroData.y * _gyroRange)  - m_gyrB[1];
-	  gyroData.z  = gzf.apply(gyroData.z * _gyroRange)  - m_gyrB[2];
-#else
-	  gyroData.x  = (gyroData.x * _gyroRange)  - m_gyrB[0];
-	  gyroData.y  = (gyroData.y * _gyroRange)  - m_gyrB[1];
-	  gyroData.z  = (gyroData.z * _gyroRange)  - m_gyrB[2];
-#endif
 
-//	  gyroData.x  *= _gyroRange;
-//	  gyroData.y  *= _gyroRange;
-//	  gyroData.z  *= _gyroRange;
+	  if(config.UseGyroFilter) {
+		  gyroData.x  = gxf.apply(gyroData.x * _gyroRange)  - m_gyrB[0];
+		  gyroData.y  = gyf.apply(gyroData.y * _gyroRange)  - m_gyrB[1];
+		  gyroData.z  = gzf.apply(gyroData.z * _gyroRange)  - m_gyrB[2];
+	  }
+	  else {
+		  gyroData.x  = (gyroData.x * _gyroRange)  - m_gyrB[0];
+		  gyroData.y  = (gyroData.y * _gyroRange)  - m_gyrB[1];
+		  gyroData.z  = (gyroData.z * _gyroRange)  - m_gyrB[2];
+	  }
+
+#if !PROTOTYPE
+	  gyroData.x = -gyroData.x;
+	  gyroData.z = -gyroData.z;
+#endif
 	  return gyroData;
 }
 

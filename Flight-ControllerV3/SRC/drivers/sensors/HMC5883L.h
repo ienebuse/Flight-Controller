@@ -29,6 +29,7 @@
 //#include <Arduino.h>
 //#include <Wire.h>
 #include <typedefs.h>
+#include <Configurator.h>
 
 
 #define HMC5883L_ADDRESS 0x1E
@@ -46,12 +47,6 @@
 
 #define ERRORCODE_1 "Entered scale was not valid, valid gauss values are: 0.88, 1.3, 1.9, 2.5, 4.0, 4.7, 5.6, 8.1"
 #define ERRORCODE_1_NUM 1
-
-
-typedef struct CalibData {
-	Vector_t<float> scale = {.x = 1.01740813, .y = 1.01251209, .z = 0.971375823};
-	Vector_t<float> offset = {.x = -2.75999999, .y = 127.420006, .z = 124.660004};
-}CalibData;
 
 //typedef struct CalibData {
 //	float scale[3][3] = {{1.005367, -0.000931, -0.000440},
@@ -75,11 +70,6 @@ typedef struct CalibData {
 //
 //	Vector_t<float> offset = {.x = 20.010780, .y = 160.228349, .z = 117.908799};
 //}magCalibData_t;
-
-typedef struct CompassData {
-	Vector_t<float> mag;
-	float heading;
-}CompassData_t;
 
 class HMC5883L
 {
@@ -121,8 +111,15 @@ public:
     
     void calibrateExt();
 
+    void setMagneticDeclination(float degrees);
+
     
 protected:
+
+    typedef struct CalibData {
+    		Vector_t<float> scale = {.x = 1.01740813, .y = 1.01251209, .z = 0.971375823};
+    		Vector_t<float> offset = {.x = -2.75999999, .y = 127.420006, .z = 124.660004};
+    }CalibData;
 
     void correctDeclination(Vector_t<float> &mag);
     void write(uint8_t address, uint8_t data);
@@ -133,7 +130,7 @@ protected:
     float m_Heading;
     I2C_Bus* m_i2cBus;
     devAddr_t m_devAddr;
-    const float decl = DEG2RAD*MAG_DECLINATION;
+    float decl;
 
     CalibData m_calibData;
 };

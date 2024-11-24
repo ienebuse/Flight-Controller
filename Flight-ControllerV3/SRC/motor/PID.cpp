@@ -6,6 +6,7 @@
  */
 
 #include <motor/PID.h>
+#include <Configurator.h>
 
 PID::PID() {
 	// TODO Auto-generated constructor stub
@@ -31,6 +32,25 @@ static float fastSqrt(float number) {
     x = x * (1.5f - xhalf * x * x); // Second iteration (usually sufficient)
 
     return 1.0f / x;
+}
+
+static float maxAltRateScale() {
+	return Configurator::getConfig().MaxAltRate * 100 / Configurator::getConfig().OptFlwMaxHeight;
+}
+
+void PID::updateSetpoint(float newSetpoint, PID_Type pidType) {
+	if(pidType == PID_THROTTLE) {
+		m_setPoint = newSetpoint/Configurator::getConfig().OptFlwMaxHeight * 100;
+	}
+	else if(pidType == PID_YAW) {
+		m_setPoint = 2*(newSetpoint - 50)*Configurator::getConfig().MaxYawAngle/MAX_YAW_ANGLE;
+	}
+	else if(pidType == PID_ROLL || pidType == PID_PITCH){
+		m_setPoint = 2*(newSetpoint - 50)*Configurator::getConfig().MaxAngle/MAX_ANGLE;
+	}
+	else {
+		m_setPoint = 2*(newSetpoint - 50);
+	}
 }
 
 
@@ -89,7 +109,7 @@ float PID::run(float pos, float rate, CNTRL_Type controlType, PID_Type pidType, 
 				return 0;
 			}
 			rateSp = 2*(1 - pos / m_setPoint);
-			rateSp = MIN(MAX_ALT_RATE_SCALE, rateSp);
+			rateSp = MIN(maxAltRateScale(), rateSp);
 		}
 		else {
 			rateSp = m_rKp * copysign(fastSqrt(abs(eP)),eP);

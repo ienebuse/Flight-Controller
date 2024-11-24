@@ -13,7 +13,6 @@
 #include <GPS.h>
 #include <receiver/SBus.h>
 #include <TimeTick.h>
-#include <MotorControl.h>
 #include <receiver/iSBusRx.h>
 #include <Scheduler.h>
 #include <Logger.h>
@@ -23,12 +22,16 @@
 #include <OpticalFlow.h>
 #include <BlackBok.h>
 #include <DPS310.h>
+#include <FlightControl.h>
+#include <config.h>
+#include <Configurator.h>
 
 //#include <Task.h>
 
 
 class Application: iSBusRx {
 public:
+
 	Application();
 	virtual ~Application();
 
@@ -63,6 +66,10 @@ public:
 
 	inline Logger* getLogger() {
 		return &m_log;
+	}
+
+	inline Configurator* getConfigurator() {
+		return &m_configurator;
 	}
 
 	void init(HAL_Devices_t *devices);
@@ -107,7 +114,7 @@ private:
 	Attitude m_attitude;
 	I2C_Bus m_i2cBus;
 	SBus m_sbusRx;
-	MotorControl m_motorControl;
+	FlightControl m_flightControl;
 	Meter m_meter;
 //	Dps310 barometer;
 //	dps310::DPS310 barometer;
@@ -120,6 +127,7 @@ private:
 	Channel m_rxCh;
 	Logger m_log;
 	HeartBeat m_hrtBt;
+	Configurator m_configurator;
 
 
 	bool m_PidMode{false};

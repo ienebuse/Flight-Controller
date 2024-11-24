@@ -35,6 +35,7 @@
 #include "TimeTick.h"
 #include "cmath"
 #include "typedefs.h"
+#include <Configurator.h>
 
 using namespace Infineon_DPS310;
 
@@ -226,7 +227,7 @@ DPS310::getAltitude()
 	const float Tcomp = c0 * 0.5f + c1 * Traw_sc;
 
 	m_altData.altAvailable = true;
-	m_altData.altitude = 44330 * (1.0 - pow(Pcomp / SEA_LEVEL_hPA, 0.1903));
+	m_altData.altitude = 44330 * (1.0 - pow(Pcomp / Configurator::getConfig().SealLevel, 0.1903));
 	m_altData.temperature = Tcomp;
 
 	return m_altData;

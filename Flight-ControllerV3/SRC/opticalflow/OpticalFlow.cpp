@@ -9,6 +9,7 @@
 #include <string.h>
 #include <usart.h>
 #include <stdio.h>
+#include <Configurator.h>
 
 
 #define X25_INIT_CRC 0xffff
@@ -159,8 +160,8 @@ void OpticalFlow::init(UART_HandleTypeDef* huart, AHRS* ahrs) {
 	m_uart = huart;
 	m_ahrs = ahrs;
 
-	xFilt.init(0.35, 100);
-	yFilt.init(0.35, 100);
+	xFilt.init(0.5, 100);
+	yFilt.init(0.5, 100);
 	zFilt.init(10, 100);
 
 	HAL_UART_AbortReceive(huart);
@@ -180,12 +181,13 @@ static void sendData(uint8_t* data, uint16_t len) {
 }
 
 bool OpticalFlow::parseOptFlwData() {
+	static Config config = Configurator::getConfig();
 	volatile uint8_t qlty;
 	uint32_t xflw, yflw;
 	static uint8_t payload[40];
 	uint8_t len, flag;
 
-	static uint8_t remLen = 1;
+	static  uint8_t remLen = 1;
 	static uint16_t payloadSize = 0;
 	static bool first = true;
 	uint8_t data = 0;
@@ -195,46 +197,111 @@ bool OpticalFlow::parseOptFlwData() {
 
 	newEvent = false;
 
-#if OPTICAL_FLOW_USE_MSP
+	if(config.OptFlwUseMSP) {
 
-	switch(m_state) {
-		case 0:
-			data = buffer[0];
-			if((char)data == '$') {
-				m_state = 1;
-				remLen = 1;
-			}
-			break;
-		case 1:
-			data = buffer[0];
-			if((char)data == 'X') {
-				m_state = 2;
-				remLen = 1;
-			}
-			else {
+		switch(m_state) {
+			case 0:
+				data = buffer[0];
+				if((char)data == '$') {
+					m_state = 1;
+					remLen = 1;
+				}
+				break;
+			case 1:
+				data = buffer[0];
+				if((char)data == 'X') {
+					m_state = 2;
+					remLen = 1;
+				}
+				else {
+					m_state = 0;
+					remLen = 1;
+				}
+				break;
+			case 2:
+				data = buffer[0];
+				if((char)data == '<') {
+					m_state = 3;
+					remLen = 5;
+					indx = 0;
+				}
+				else {
+					m_state = 0;
+					remLen = 1;
+				}
+				break;
+			case 3:
+				memcpy(&payload[0], buffer, remLen);
+					 if(payload[0] == 0) {
+						payloadSize = le16(&payload[3]);	// Get payload size
+						if(payloadSize == 5 || payloadSize == 9) {
+							m_state = 4;
+							remLen = payloadSize+1;
+						}
+						else {
+							m_state = 0;
+							remLen = 1;
+						}
+					}
+					else {
+						m_state = 0;
+						remLen = 1;
+					}
+				break;
+			case 4:
+				memcpy(&payload[5], buffer, remLen);
+				uint8_t crc = payload[payloadSize+5];
+				uint8_t crc_eval = checkSum(payload, payloadSize + 5);
+
+				if(crc == crc_eval) {
+					uint16_t funct = le16(&payload[1]);
+					qlty = payload[5];
+					if(funct == FUNC_LIDAR && payloadSize == 5) {
+						m_hLidar = le32(&payload[6]);
+						lidarRdy = true;
+					}
+					else if(funct == FUNC_FLOW && payloadSize == 9) {
+						xflw = le32(&payload[6]);
+						yflw = le32(&payload[10]);
+
+						m_xFlwSum += (int32_t)xflw;
+						m_yFlwSum += (int32_t)yflw;
+						m_state = 0;
+						++flowCount;
+						flowRdy = true;
+						remLen = 1;
+					}
+				}
 				m_state = 0;
+				payloadSize = 0;
 				remLen = 1;
-			}
-			break;
-		case 2:
-			data = buffer[0];
-			if((char)data == '<') {
-				m_state = 3;
-				remLen = 5;
-				indx = 0;
-			}
-			else {
-				m_state = 0;
-				remLen = 1;
-			}
-			break;
-		case 3:
-			memcpy(&payload[0], buffer, remLen);
-				 if(payload[0] == 0) {
-					payloadSize = le16(&payload[3]);	// Get payload size
-					if(payloadSize == 5 || payloadSize == 9) {
-						m_state = 4;
-						remLen = payloadSize+1;
+				break;
+		}
+	}
+	else if(config.OptFlwUseMavLink) {
+
+		static uint16_t funct = 0;
+
+		switch(m_state) {
+			case 0:
+				data = buffer[0];
+				if(data == 0xFE) {
+					m_state = 1;
+					remLen = 5;
+				}
+				break;
+			case 1:
+				memcpy(&payload[0], buffer, remLen);
+				if(payload[2] == 0x01 && payload[3] == 0x58) {
+					payloadSize = payload[0];
+					remLen = payloadSize + 2;
+					if(payload[4] == 0x64){
+						funct = FUNC_FLOW;
+						m_state = 2;
+					}
+					else if(payload[4] == 0x84){
+						funct = FUNC_LIDAR;
+						m_state = 2;
 					}
 					else {
 						m_state = 0;
@@ -245,184 +312,121 @@ bool OpticalFlow::parseOptFlwData() {
 					m_state = 0;
 					remLen = 1;
 				}
-			break;
-		case 4:
-			memcpy(&payload[5], buffer, remLen);
-			uint8_t crc = payload[payloadSize+5];
-			uint8_t crc_eval = checkSum(payload, payloadSize + 5);
-
-			if(crc == crc_eval) {
-				uint16_t funct = le16(&payload[1]);
-				qlty = payload[5];
-				if(funct == FUNC_LIDAR && payloadSize == 5) {
-					m_hLidar = le32(&payload[6]);
-					lidarRdy = true;
+				break;
+			case 2:
+				memcpy(&payload[5], buffer, remLen);
+				if(payload[0] == 0x1A) {
+					volatile uint8_t x = 0;
+					x++;
 				}
-				else if(funct == FUNC_FLOW && payloadSize == 9) {
-					xflw = le32(&payload[6]);
-					yflw = le32(&payload[10]);
-
-					m_xFlwSum += xflw;
-					m_yFlwSum += yflw;
+				uint8_t CRC_EXTRA = 0;
+				if(funct == FUNC_FLOW) {
+					CRC_EXTRA = 0xAF;
+				}
+				else if(funct == FUNC_LIDAR) {
+					CRC_EXTRA = 0x55;
+				}
+				else {
 					m_state = 0;
-					++flowCount;
-					flowRdy = true;
+					remLen = 1;
+					payloadSize = 0;
+					break;
+				}
+				uint16_t crc = (uint16_t)payload[payloadSize + 6] << 8 | (uint16_t)payload[payloadSize + 5];
+				uint16_t crc_eval = crc_calculate(payload, payloadSize + 5, CRC_EXTRA);
+
+				if(crc == crc_eval){
+					if(funct == FUNC_FLOW) {
+						MAV_FLOW_Data_t* flowData = (MAV_FLOW_Data_t*)(payload + 5);
+						m_xFlwSum += flowData->flow_x;
+						m_yFlwSum += flowData->flow_y;
+						++flowCount;
+						flowRdy = true;
+					}
+					else if(funct == FUNC_LIDAR) {
+						MAV_RANGE_Data_t* rangeData = (MAV_RANGE_Data_t*)(payload + 5);
+						m_hLidar = (float)rangeData->dist;
+						lidarRdy = true;
+					}
+				}
+				m_state = 0;
+				remLen = 1;
+				payloadSize = 0;
+				break;
+		}
+	}
+	else if(config.OptFlwUseMicrolink) {
+
+
+		switch(m_state) {
+			case 0:
+				data = buffer[0];
+				if(data == 0xEF) {
+					payload[0] = data;
+					m_state = 1;
 					remLen = 1;
 				}
-			}
-			m_state = 0;
-			payloadSize = 0;
-			remLen = 1;
-			break;
-	}
-#elif OPTICAL_FLOW_USE_MAVLINK
-
-	static uint16_t funct = 0;
-
-	switch(m_state) {
-		case 0:
-			data = buffer[0];
-			if(data == 0xFE) {
-				m_state = 1;
-				remLen = 5;
-			}
-			break;
-		case 1:
-			memcpy(&payload[0], buffer, remLen);
-			if(payload[2] == 0x01 && payload[3] == 0x58) {
-				payloadSize = payload[0];
-				remLen = payloadSize + 2;
-				if(payload[4] == 0x64){
-					funct = FUNC_FLOW;
+				break;
+			case 1:
+				data = buffer[0];
+				if(data == 0x0F) {
+					payload[1] = data;
 					m_state = 2;
-				}
-				else if(payload[4] == 0x84){
-					funct = FUNC_LIDAR;
-					m_state = 2;
+					remLen = 1;
 				}
 				else {
 					m_state = 0;
 					remLen = 1;
 				}
-			}
-			else {
-				m_state = 0;
-				remLen = 1;
-			}
-			break;
-		case 2:
-			memcpy(&payload[5], buffer, remLen);
-			if(payload[0] == 0x1A) {
-				volatile uint8_t x = 0;
-				x++;
-			}
-			uint8_t CRC_EXTRA = 0;
-			if(funct == FUNC_FLOW) {
-				CRC_EXTRA = 0xAF;
-			}
-			else if(funct == FUNC_LIDAR) {
-				CRC_EXTRA = 0x55;
-			}
-			else {
+				break;
+			case 2:
+				data = buffer[0];
+				if(data == 0x00) {
+					payload[2] = data;
+					m_state = 3;
+					remLen = 3;
+				}
+				else {
+					m_state = 0;
+					remLen = 1;
+				}
+				break;
+			case 3:
+				memcpy(&payload[3], buffer, remLen);
+				if(payload[3] == 0x51) {
+					payloadSize = payload[5];
+					remLen = payloadSize + 1;
+					m_state = 4;
+				}
+				else {
+					m_state = 0;
+					remLen = 1;
+				}
+				break;
+			case 4:
+				memcpy(&payload[6], buffer, remLen);
+				uint8_t crc = (uint16_t)payload[payloadSize + 6];
+				uint8_t crc_eval = checksum(payload, payloadSize + 6);
+
+				if(crc == crc_eval){
+					MICRO_LINK_Data_t* flowData = (MICRO_LINK_Data_t*)(payload + 6);
+					if(flowData->flw_status == 1) {
+						m_xFlwSum += flowData->flow_x;
+						m_yFlwSum += flowData->flow_y;
+						flowRdy = true;
+						++flowCount;
+					};
+					if(flowData->distStatus == 1) {
+						m_hLidar = (float)flowData->gDistance;
+						lidarRdy = true;
+					}
+				}
 				m_state = 0;
 				remLen = 1;
 				payloadSize = 0;
 				break;
-			}
-			uint16_t crc = (uint16_t)payload[payloadSize + 6] << 8 | (uint16_t)payload[payloadSize + 5];
-			uint16_t crc_eval = crc_calculate(payload, payloadSize + 5, CRC_EXTRA);
-
-			if(crc == crc_eval){
-				if(funct == FUNC_FLOW) {
-					MAV_FLOW_Data_t* flowData = (MAV_FLOW_Data_t*)(payload + 5);
-					m_xFlwSum += flowData->flow_x;
-					m_yFlwSum += flowData->flow_y;
-					++flowCount;
-					flowRdy = true;
-				}
-				else if(funct == FUNC_LIDAR) {
-					MAV_RANGE_Data_t* rangeData = (MAV_RANGE_Data_t*)(payload + 5);
-					m_hLidar = (float)rangeData->dist;
-					lidarRdy = true;
-				}
-			}
-			m_state = 0;
-			remLen = 1;
-			payloadSize = 0;
-			break;
+		}
 	}
-
-#elif OPTICAL_FLOW_USE_MICROLINK
-
-	switch(m_state) {
-		case 0:
-			data = buffer[0];
-			if(data == 0xEF) {
-				payload[0] = data;
-				m_state = 1;
-				remLen = 1;
-			}
-			break;
-		case 1:
-			data = buffer[0];
-			if(data == 0x0F) {
-				payload[1] = data;
-				m_state = 2;
-				remLen = 1;
-			}
-			else {
-				m_state = 0;
-				remLen = 1;
-			}
-			break;
-		case 2:
-			data = buffer[0];
-			if(data == 0x00) {
-				payload[2] = data;
-				m_state = 3;
-				remLen = 3;
-			}
-			else {
-				m_state = 0;
-				remLen = 1;
-			}
-			break;
-		case 3:
-			memcpy(&payload[3], buffer, remLen);
-			if(payload[3] == 0x51) {
-				payloadSize = payload[5];
-				remLen = payloadSize + 1;
-				m_state = 4;
-			}
-			else {
-				m_state = 0;
-				remLen = 1;
-			}
-			break;
-		case 4:
-			memcpy(&payload[6], buffer, remLen);
-			uint8_t crc = (uint16_t)payload[payloadSize + 6];
-			uint8_t crc_eval = checksum(payload, payloadSize + 6);
-
-			if(crc == crc_eval){
-				MICRO_LINK_Data_t* flowData = (MICRO_LINK_Data_t*)(payload + 6);
-				if(flowData->flw_status == 1) {
-					m_xFlwSum += flowData->flow_x;
-					m_yFlwSum += flowData->flow_y;
-					flowRdy = true;
-					++flowCount;
-				};
-				if(flowData->distStatus == 1) {
-					m_hLidar = (float)flowData->gDistance;
-					lidarRdy = true;
-				}
-			}
-			m_state = 0;
-			remLen = 1;
-			payloadSize = 0;
-			break;
-	}
-#endif
 
 	HAL_UART_Receive_IT(m_uart, buffer, remLen);
 
@@ -513,7 +517,7 @@ void OpticalFlow::taskFunc(timetick_us currenTimeUs) {
 //		float vlx = vwx*(q02 + q12 - q22 - q32) + vwy*(_2q1q2 + _2q0q3);
 //		float vly = vwx*(_2q1q2 - _2q0q3) + vwy*(q02 - q12 + q22 - q32);
 
-		if(currentFlowData.z > 220) {
+		if(currentFlowData.z > 150) {
 			wPos.x += vwx * 0.02f;
 			wPos.y += vwy * 0.02f;
 		}

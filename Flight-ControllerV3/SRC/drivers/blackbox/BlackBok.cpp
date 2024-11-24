@@ -7,6 +7,8 @@
 
 #include <BlackBok.h>
 #include <Application.h>
+#include "usbd_cdc_if.h"
+#include <string.h>
 
 #define BYTE_START_FLAG1	0x85
 #define BYTE_START_FLAG2	0x8B
@@ -25,7 +27,7 @@ typedef struct __attribute__ ((packed)) {
 const uint16_t BlackBok::cm_MAX_LOG;;
 const uint16_t BlackBok::cm_NUM_LOG_BYTES;
 
-BlackBok::BlackBok(AHRS* ahrs, MotorControl* mtor, Meter* meter, GPS* gps, Barometer* baro, OpticalFlow* optFlw) :iLogger(ahrs, mtor, meter, gps, baro, optFlw) {
+BlackBok::BlackBok(AHRS* ahrs, FlightControl* mtor, Meter* meter, GPS* gps, Barometer* baro, OpticalFlow* optFlw) :iLogger(ahrs, mtor, meter, gps, baro, optFlw) {
 	// TODO Auto-generated constructor stub
 
 }
@@ -34,11 +36,11 @@ BlackBok::~BlackBok() {
 	// TODO Auto-generated destructor stub
 }
 
-void BlackBok::init(UART_HandleTypeDef* huart, SPI_Config config) {
+void BlackBok::init(SPI_Config config) {
 //	uint16_t badBlocks[1024];
 	BlackBox_Data buffer[cm_MAX_LOG];
 
-	iLogger::init(huart);
+	iLogger::init(nullptr);
 	flashDev.init(config);
 
 ////	uint16_t numBadBlocks = flashDev.getBadBlocks(badBlocks);
@@ -76,6 +78,19 @@ bool BlackBok::fullErase() {
 	m_eraseResp = flashDev.bulkErase(0);
 	m_justErased = true;
 	return m_eraseResp;
+}
+
+void BlackBok::writeConfig(uint8_t page, uint8_t* config, uint16_t size) {
+	assert(size <= 2048);
+	assert(page == 0 || page == 1);
+
+	memcpy(m_configBuffer, config, size);
+	flashDev.loadProgAndExecute(page, 0, (uint8_t*)m_configBuffer, size);
+}
+
+bool BlackBok::readConfig(uint8_t page, uint8_t* config, uint16_t size) {
+	bool success = flashDev.readPage(page, 0, config, size);
+	return success;
 }
 
 BlackBox_Data BlackBok::getPacket(timetick_us currenTimeUs) {
@@ -125,7 +140,7 @@ void BlackBok::log(timetick_us currenTimeUs) {
 					}
 					Log_Packet_t pckt = {.bbLog = buffer[i]};
 					Application::sUartTxReady = false;
-					HAL_UART_Transmit_IT(m_uart, (uint8_t*)&pckt, sizeof(Log_Packet_t));
+					CDC_Transmit_FS((uint8_t*)&pckt, sizeof(Log_Packet_t));
 				}
 			}
 		}
@@ -137,7 +152,7 @@ void BlackBok::log(timetick_us currenTimeUs) {
 			TimeTick::delay_us(100);
 		}
 		Application::sUartTxReady = false;
-		HAL_UART_Transmit_IT(m_uart, (uint8_t*)&pckt, sizeof(Log_Packet_t));
+		CDC_Transmit_FS((uint8_t*)&pckt, sizeof(Log_Packet_t));
 		blkBoxReq = false;
 	}
 	if(m_justErased) {
@@ -162,11 +177,6 @@ void BlackBok::log(timetick_us currenTimeUs) {
 
 	if(m_numlogs == cm_MAX_LOG && m_currentPage <= cm_MAX_PAGE) {
 		m_numlogs = 0;
-//		flashDev.loadProgData(0, (uint8_t*)m_buffer, cm_NUM_LOG_BYTES);
-//		flashDev.ProgramExecute(m_currentPage++);
-
 		flashDev.loadProgAndExecute(m_currentPage++, 0, (uint8_t*)m_buffer, cm_NUM_LOG_BYTES);
-
-//	    bool resp = flashDev.readPage(m_currentPage++, 0, (uint8_t*)m_buffer, cm_NUM_LOG_BYTES);
 	}
 }
