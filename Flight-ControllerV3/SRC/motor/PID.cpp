@@ -35,18 +35,18 @@ static float fastSqrt(float number) {
 }
 
 static float maxAltRateScale() {
-	return Configurator::getConfig().MaxAltRate * 100 / Configurator::getConfig().OptFlwMaxHeight;
+	return Configurator::getConfig().settings.MaxAltRate * 100 / Configurator::getConfig().settings.OptFlwMaxHeight;
 }
 
 void PID::updateSetpoint(float newSetpoint, PID_Type pidType) {
 	if(pidType == PID_THROTTLE) {
-		m_setPoint = newSetpoint/Configurator::getConfig().OptFlwMaxHeight * 100;
+		m_setPoint = newSetpoint/Configurator::getConfig().settings.OptFlwMaxHeight * 100;
 	}
 	else if(pidType == PID_YAW) {
-		m_setPoint = 2*(newSetpoint - 50)*Configurator::getConfig().MaxYawAngle/MAX_YAW_ANGLE;
+		m_setPoint = 2*(newSetpoint - 50)*Configurator::getConfig().settings.MaxYawAngle/MAX_YAW_ANGLE;
 	}
 	else if(pidType == PID_ROLL || pidType == PID_PITCH){
-		m_setPoint = 2*(newSetpoint - 50)*Configurator::getConfig().MaxAngle/MAX_ANGLE;
+		m_setPoint = 2*(newSetpoint - 50)*Configurator::getConfig().settings.MaxAngle/MAX_ANGLE;
 	}
 	else {
 		m_setPoint = 2*(newSetpoint - 50);

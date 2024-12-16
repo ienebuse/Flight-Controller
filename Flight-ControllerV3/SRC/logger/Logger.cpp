@@ -81,6 +81,7 @@ void Logger::getLogData() {
 	m_logData.optFlw = m_optFlw->getOptFlowData();
 	m_logData.ctrlLog = m_motor->getLog();
 	m_logData.battVoltage = m_meter->getBatteryVoltage();
+	m_logData.battCapacity = m_meter->getBatteryCapacity();
 	if(m_barometer->dataAvailable()){
 		m_logData.altitude = m_barometer->getAltitude();
 	}
@@ -88,7 +89,7 @@ void Logger::getLogData() {
 
 void Logger::log(timetick_us currenTimeUs) {
 
-	if(!Configurator::getConfig().EnableLogging) {
+	if(!Configurator::getConfig().settings.EnableLogging) {
 		return;
 	}
 	static uint8_t buffer[40];

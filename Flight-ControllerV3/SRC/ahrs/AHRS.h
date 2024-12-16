@@ -8,11 +8,11 @@
 #ifndef AHRS_AHRS_H_
 #define AHRS_AHRS_H_
 
-#include <drivers/sensors/ICM42688.h>
+#include <sensors/ICM42688.h>
 #if PROTOTYPE
-	#include <drivers/sensors/HMC5883L.h>
+	#include <sensors/HMC5883L.h>
 #else
-	#include <drivers/sensors/QMC5883L.h>
+	#include <sensors/QMC5883L.h>
 #endif
 #include <typedefs.h>
 #include <fusion/ComplimentaryFilter.h>
@@ -153,6 +153,8 @@ private:
 	void updateVariance();
 
 	void filterGyro();
+
+	float _getHeading();
 
 	Euler quat2Euler(Quat data);
 

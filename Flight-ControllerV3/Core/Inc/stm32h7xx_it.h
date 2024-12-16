@@ -72,6 +72,7 @@ void TIM5_IRQHandler(void);
 void UART4_IRQHandler(void);
 void OTG_FS_IRQHandler(void);
 void ADC3_IRQHandler(void);
+void BDMA_Channel0_IRQHandler(void);
 void LPUART1_IRQHandler(void);
 /* USER CODE BEGIN EFP */
 

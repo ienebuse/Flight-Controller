@@ -10,7 +10,6 @@
 
 #include <devicedef.h>
 #include <ahrs/AHRS.h>
-#include <GPS.h>
 #include <receiver/SBus.h>
 #include <TimeTick.h>
 #include <receiver/iSBusRx.h>
@@ -19,12 +18,14 @@
 #include <HeartBeat.h>
 #include <meter/Meter.h>
 #include <barometer/Barometer.h>
+#include <blackbox/BlackBok.h>
 #include <OpticalFlow.h>
-#include <BlackBok.h>
-#include <DPS310.h>
 #include <FlightControl.h>
 #include <config.h>
 #include <Configurator.h>
+#include <gps/GPS.h>
+#include <sensors/dps/DPS310.h>
+#include <Buzzer.h>
 
 //#include <Task.h>
 
@@ -122,6 +123,7 @@ private:
 	Barometer m_barometer;
 	OpticalFlow m_optflw;
 	BlackBok m_blackBox;
+	Buzzer m_buzzer;
 
 
 	Channel m_rxCh;

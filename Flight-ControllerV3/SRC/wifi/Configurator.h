@@ -12,13 +12,13 @@
 #include <AHRS.h>
 #include <meter/Meter.h>
 #include <barometer/Barometer.h>
+#include <blackbox/BlackBok.h>
 #include <FlightControl.h>
-#include <GPS.h>
 #include <OpticalFlow.h>
-#include <BlackBok.h>
 #include <Logger.h>
 
 #include <config.h>
+#include <gps/GPS.h>
 
 #include <Task.h>
 
@@ -55,7 +55,15 @@ public:
 
 	void loadConfig();
 
-	void saveConfig();
+	bool loadSettings();
+
+	bool loadPid();
+
+	void saveConfig(bool schedule = true);
+
+	void saveSettings();
+
+	void savePid();
 
 	void handleRxInterrupt(bool reset);
 
@@ -72,6 +80,8 @@ public:
 	static Config initConfig() {
 		m_config = Config();
 		m_defaultConfig = Config();
+		m_settings = m_config.settings;
+		m_pid = m_config.pid;
 		return m_config;
 	}
 
@@ -104,12 +114,17 @@ private:
 
 	static Config m_config;
 	static Config m_defaultConfig;
+	static Settings m_settings;
+	static Pid m_pid;
 
 	const uint32_t CONFIG_HEADER{0xDEADFACE};
 
 	bool m_txReady{true};
 
 	bool m_saveNewConfig{false};
+	bool m_eraseConfig{false};
+	bool m_saveNewPid;
+	bool m_saveNewSettings;
 	bool m_sendConfig{false};
 	SendingState sendingState{SendingNone};
 

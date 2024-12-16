@@ -24,7 +24,7 @@ typedef struct __attribute__((packed)) {
   PidParam_t px = {POS_PID_rKp, POS_PID_Kp, POS_PID_Ki, POS_PID_Kd};
   PidParam_t py = {POS_PID_rKp, POS_PID_Kp, POS_PID_Ki, POS_PID_Kd};
   PidParam_t alt = {THROTTLE_PID_rKp, THROTTLE_PID_Kp, THROTTLE_PID_Ki, THROTTLE_PID_Kd};
-}PID_t;
+}Pid;
 
 typedef struct __attribute__((packed)) {
 	float MotorLimit 			= MOTOR_LIMIT_SCALE;
@@ -44,6 +44,7 @@ typedef struct __attribute__((packed)) {
 //	uint32_t LoggerPeriod		= LOGGER_PERIOD_US;
 
 	uint16_t DecentRate			= DECENT_RATE_MMpS;
+	uint8_t ThrottleSensitivity = THROTTLE_SENSITIVITY;
 
 	bool UseMadgwick			= USE_MADGWICK;
 	bool UseMahony				= USE_MAHONY;
@@ -65,6 +66,7 @@ typedef struct __attribute__((packed)) {
 	bool OptFlwUseMSP			= OPTICAL_FLOW_USE_MSP;
 	bool OptFlwUseMavLink		= OPTICAL_FLOW_USE_MAVLINK;
 	bool OptFlwUseMicrolink		= OPTICAL_FLOW_USE_MICROLINK;
+	bool OptFlwUseUPixel		= OPTICAL_FLOW_USE_UPIXEL;
 
 	uint16_t OptFlwMaxVel		= OPTICAL_FLOW_MAX_VEL;
 	uint16_t OptFlwMaxHeight	= OPTICAL_FLOW_MAX_HEIGHT;
@@ -77,7 +79,7 @@ typedef struct __attribute__((packed)) {
 	uint8_t MotorMin			= MOTOR_MIN;
 	uint8_t MotorMax			= MOTOR_MAX;
 
-	PID_t Pid;
+//	PID_t Pid;
 
 	float VoltScale				= VOLTAGE_MEASUREMENT_SCALE;
 	float CurrentScale			= CURRENT_MEASUREMENT_SCALE;
@@ -85,6 +87,13 @@ typedef struct __attribute__((packed)) {
 	float SealLevel				= SEA_LEVEL_hPA;
 
 	uint8_t NumCell				= BATTERY_TYPE_S;
+}Settings;
+
+
+
+typedef struct __attribute__((packed)) {
+	Pid pid;
+	Settings settings;
 }Config;
 
 typedef struct __attribute__((packed)) {
@@ -94,6 +103,20 @@ typedef struct __attribute__((packed)) {
 	Config config;
 	uint8_t crc;
 }Config_Packet;
+
+typedef struct __attribute__((packed)) {
+	uint32_t Header 		= 0xDEADFACE;
+	uint8_t Len = sizeof(Pid) + 1;
+	Pid pid;
+	uint8_t crc;
+}Pid_Packet;
+
+typedef struct __attribute__((packed)) {
+	uint32_t Header 		= 0xDEADFACE;
+	uint8_t Len = sizeof(Settings) + 1;
+	Settings settings;
+	uint8_t crc;
+}Settings_Packet;
 
 
 

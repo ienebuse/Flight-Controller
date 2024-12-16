@@ -10,6 +10,7 @@
 #include <usart.h>
 #include <stdio.h>
 #include <Configurator.h>
+#include "usbd_cdc_if.h"
 
 
 #define X25_INIT_CRC 0xffff
@@ -50,6 +51,17 @@ typedef struct __attribute__ ((packed)) {
 	uint8_t orientation;
 	uint8_t cov;			// cm^2
 }MAV_RANGE_Data_t;
+
+typedef struct __attribute__((packed)) {
+	uint16_t distance; 		// mm
+	uint8_t distStrength;	// 0-255
+	uint8_t reserved1;
+	int16_t flow_x;			// dpix
+	int16_t flow_y;			// dpix
+	uint16_t timespan;
+	uint8_t valid;		// 1-valid; 0-invalid
+	uint8_t version;
+}UPIXEL_FLOW_Data_t;
 
 
 typedef struct __attribute__((packed)) {
@@ -160,9 +172,13 @@ void OpticalFlow::init(UART_HandleTypeDef* huart, AHRS* ahrs) {
 	m_uart = huart;
 	m_ahrs = ahrs;
 
-	xFilt.init(0.5, 100);
-	yFilt.init(0.5, 100);
-	zFilt.init(10, 100);
+//	xFilt.init(0.5, 50);
+//	yFilt.init(0.5, 50);
+//	zFilt.init(10, 50);
+
+	xFilt.init(0.5, 50);
+	yFilt.init(0.5, 50);
+	zFilt.init(20, 50);
 
 	HAL_UART_AbortReceive(huart);
 
@@ -177,7 +193,7 @@ void OpticalFlow::init(UART_HandleTypeDef* huart, AHRS* ahrs) {
 
 
 static void sendData(uint8_t* data, uint16_t len) {
-	HAL_UART_Transmit_DMA(&huart3, data, len);
+	CDC_Transmit_FS(data, len);
 }
 
 bool OpticalFlow::parseOptFlwData() {
@@ -197,7 +213,77 @@ bool OpticalFlow::parseOptFlwData() {
 
 	newEvent = false;
 
-	if(config.OptFlwUseMSP) {
+	if(config.settings.OptFlwUseUPixel) {
+		switch(m_state) {
+			case 0:
+				data = buffer[0];
+				if(data == 0xDF) {
+					payload[0] = data;
+					m_state = 1;
+					remLen = 1;
+				}
+				break;
+			case 1:
+				data = buffer[0];
+				if(data == 0x15) {
+					payload[1] = data;
+					m_state = 2;
+					remLen = 1;
+				}
+				else {
+					m_state = 0;
+					remLen = 1;
+				}
+				break;
+			case 2:
+				data = buffer[0];
+				if(data == 0x00) {
+					payload[2] = data;
+					m_state = 3;
+					remLen = 3;
+				}
+				else {
+					m_state = 0;
+					remLen = 1;
+				}
+				break;
+			case 3:
+				memcpy(&payload[3], buffer, remLen);
+				if(payload[3] == 0x55) {
+					payloadSize = payload[5];
+					remLen = payloadSize + 1;
+					m_state = 4;
+				}
+				else {
+					m_state = 0;
+					remLen = 1;
+				}
+				break;
+			case 4:
+				memcpy(&payload[6], buffer, remLen);
+				uint8_t crc = (uint16_t)payload[payloadSize + 6];
+				uint8_t crc_eval = checksum(payload, payloadSize + 6);
+
+				if(crc == crc_eval){
+					UPIXEL_FLOW_Data_t* flowData = (UPIXEL_FLOW_Data_t*)(payload + 6);
+					if(flowData->valid > 5) {
+						m_xFlwSum -= flowData->flow_x;
+						m_yFlwSum -= flowData->flow_y;
+						flowRdy = true;
+						++flowCount;
+					};
+					if(flowData->distStrength >= 10) {
+						m_hLidar = (float)flowData->distance;
+						lidarRdy = true;
+					}
+				}
+				m_state = 0;
+				remLen = 1;
+				payloadSize = 0;
+				break;
+		}
+	}
+	else if(config.settings.OptFlwUseMSP) {
 
 		switch(m_state) {
 			case 0:
@@ -278,7 +364,7 @@ bool OpticalFlow::parseOptFlwData() {
 				break;
 		}
 	}
-	else if(config.OptFlwUseMavLink) {
+	else if(config.settings.OptFlwUseMavLink) {
 
 		static uint16_t funct = 0;
 
@@ -355,7 +441,7 @@ bool OpticalFlow::parseOptFlwData() {
 				break;
 		}
 	}
-	else if(config.OptFlwUseMicrolink) {
+	else if(config.settings.OptFlwUseMicrolink) {
 
 
 		switch(m_state) {
@@ -470,29 +556,38 @@ void OpticalFlow::taskFunc(timetick_us currenTimeUs) {
 //	static float z = 0;
 	if(lidarRdy) {
 		currentFlowData.z = zFilt.apply((float)m_hLidar);
-//		z = zFilt.apply(currentFlowData.z);
 		lidarRdy = false;
 	}
 
 	if(flowRdy) {
-//		flowRdy = false;
+		currentFlowData.x = xFilt.apply((float)(m_xFlwSum * currentFlowData.z/1000));
+		currentFlowData.y = yFilt.apply((float)(m_yFlwSum * currentFlowData.z/1000));
 
-		currentFlowData.y = yFilt.apply(-(float)(m_xFlwSum * currentFlowData.z/1000));//*1000000/(totalTime);
-		currentFlowData.x = xFilt.apply((float)(m_yFlwSum * currentFlowData.z/1000));//*1000000/(totalTime);
+		float tmp;
+		switch(OPTICAL_FLOW_ROT_CCW) {
+			case 90:
+				tmp = currentFlowData.y;
+				currentFlowData.y = -currentFlowData.x;
+				currentFlowData.x = tmp;
+				break;
+			case 180:
+				currentFlowData.x = -currentFlowData.x;
+				currentFlowData.y = -currentFlowData.y;
+				break;
+			case 270:
+				tmp = currentFlowData.y;
+				currentFlowData.y = currentFlowData.x;
+				currentFlowData.x = -tmp;
+				break;
+		}
 
-//		currentFlowData.y = -(float)(m_xFlwSum);//*1000000/(totalTime);
-//		currentFlowData.x = (float)(m_yFlwSum);//*1000000/(totalTime);
+		if(OPTICAL_FLOW_INVERT_X) {
+			currentFlowData.x = -currentFlowData.x;
+		}
 
-//		m_xFlwSum = 0;
-//		m_yFlwSum = 0;
-
-
-//		float xf = xFilt.apply(currentFlowData.x);
-//		float yf = yFilt.apply(currentFlowData.y);
-
-//		float yaw = m_ahrs->getCurrentAttitude().euler.y*DEG2RAD;
-//		float roll = m_ahrs->getCurrentAttitude().euler.r*DEG2RAD;
-//		float pitch = m_ahrs->getCurrentAttitude().euler.p*DEG2RAD;
+		if(OPTICAL_FLOW_INVERT_Y) {
+			currentFlowData.y = -currentFlowData.y;
+		}
 
 		Quat q = m_ahrs->getCurrentAttitude().quat;
 		float q02 = q.q0*q.q0;
@@ -517,7 +612,7 @@ void OpticalFlow::taskFunc(timetick_us currenTimeUs) {
 //		float vlx = vwx*(q02 + q12 - q22 - q32) + vwy*(_2q1q2 + _2q0q3);
 //		float vly = vwx*(_2q1q2 - _2q0q3) + vwy*(q02 - q12 + q22 - q32);
 
-		if(currentFlowData.z > 150) {
+		if(currentFlowData.z > 100) {
 			wPos.x += vwx * 0.02f;
 			wPos.y += vwy * 0.02f;
 		}
@@ -532,12 +627,10 @@ void OpticalFlow::taskFunc(timetick_us currenTimeUs) {
 		totalTime += currenTimeUs - lastTime;
 		lastTime = currenTimeUs;
 
-
-
-//		snprintf(buff, 60, "%.1f,%.1f,%.3f,%.1f,%.1f,%.1f,%.1f\r\n",wPos.x,wPos.y,yaw,vwx,vwy,vwx1,vwy1);
+//		snprintf(buff, 60, "%.1f,%.1f,%.1f,%.1f\r\n",vEst.x,vEst.y,vwx,vwy);
 //		snprintf(buff, 60, "%.1f,%.1f,%.3f\r\n",wPos.x,wPos.y,yaw);
 //		snprintf(buff, 60, "%.3f,%.3f,%.3f\r\n",h1,h2,currentFlowData.z);
-//		snprintf(buff, 60, "%.3f,%.3f,%.3f\r\n",z,currentFlowData.z, 0.8*z + 0.2*currentFlowData.z);
+//		snprintf(buff, 60, "%.3f,%.3f,%.3f\r\n",currentFlowData.x,currentFlowData.y, currentFlowData.z);
 //		sendData((uint8_t*)buff, strlen(buff));
 
 		m_xFlwSum = 0;

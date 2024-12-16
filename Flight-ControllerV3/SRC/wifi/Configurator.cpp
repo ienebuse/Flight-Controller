@@ -8,9 +8,12 @@
 #include <wifi/Configurator.h>
 #include <string.h>
 #include <Application.h>
+#include <Buzzer.h>
 
 
 Config Configurator::m_config, Configurator::m_defaultConfig;
+Settings Configurator::m_settings;
+Pid Configurator::m_pid;
 
 bool Configurator::m_canSendLog{true};
 Log_Packet Configurator::logPacket;
@@ -61,45 +64,79 @@ bool Configurator::sendLog(Log_Data log) {
 }
 
 void Configurator::loadConfig() {
-	Config_Packet config;
-	m_bBox->readConfig(0, (uint8_t*)&config, sizeof(Config_Packet));
-	if(config.Header == CONFIG_HEADER) {
-		uint8_t crc = config.crc;
-		uint8_t crc_eval = checksum((uint8_t*)&config, sizeof(Config_Packet)-1);
+	bool settingsState = loadSettings();
+	bool pidState = loadPid();
 
-		if(crc == crc_eval) {
-			m_config = config.config;
-		}
-		else {
-			saveConfig();
+	if(!(settingsState && pidState)) {
+		if(m_bBox->eraseConfig()) {
+			saveSettings();
+			savePid();
 		}
 	}
-	else {
-		saveConfig();
-	}
-
-//	m_bBox->eraseConfig();
 }
 
 void Configurator::loadDefaultConfig() {
-	PID_t pids = m_config.Pid;
-	memcpy((uint8_t*)&m_config, (uint8_t*)&m_defaultConfig, sizeof(Config));
-//	m_config = m_defaultConfig;
-	m_config.Pid = pids;
-	saveConfig();
+	m_config.settings = m_defaultConfig.settings;
 }
 
-void Configurator::saveConfig() {
+bool Configurator::loadSettings() {
+	Settings_Packet settingsPckt;
 
-	if(m_bBox->eraseConfig()) {
-		Config_Packet config;
-		memcpy((uint8_t*)&(config.config), (uint8_t*)&m_config, sizeof(Config));
-//		config.config = m_config;
-		uint8_t crc = checksum((uint8_t*)&config, sizeof(Config_Packet)-1);
-		config.crc = crc;
+	m_bBox->readConfig(0, (uint8_t*)&settingsPckt, sizeof(Settings_Packet));
+	if(settingsPckt.Header == CONFIG_HEADER) {
+		uint8_t crc = settingsPckt.crc;
+		uint8_t crc_eval = checksum((uint8_t*)&settingsPckt, sizeof(Settings_Packet)-1);
 
-		m_bBox->writeConfig(0, (uint8_t*)&config, sizeof(Config_Packet));
+		if(crc == crc_eval) {
+			m_config.settings = settingsPckt.settings;
+		}
+		else {
+			return false;
+		}
 	}
+	else {
+		return false;
+	}
+	return true;
+}
+
+bool Configurator::loadPid() {
+	Pid_Packet pidPckt;
+
+	m_bBox->readConfig(1, (uint8_t*)&pidPckt, sizeof(Pid_Packet));
+	if(pidPckt.Header == CONFIG_HEADER) {
+		uint8_t crc = pidPckt.crc;
+		uint8_t crc_eval = checksum((uint8_t*)&pidPckt, sizeof(Pid_Packet)-1);
+
+		if(crc == crc_eval) {
+			m_config.pid = pidPckt.pid;
+		}
+		else {
+			return false;
+		}
+	}
+	else {
+		return false;
+	}
+	return true;
+}
+
+void Configurator::saveSettings() {
+	Settings_Packet settingsPckt;
+	settingsPckt.settings = m_config.settings;
+	uint8_t crc = checksum((uint8_t*)&settingsPckt, sizeof(Settings_Packet)-1);
+	settingsPckt.crc = crc;
+
+	m_bBox->writeConfig(0, (uint8_t*)&settingsPckt, sizeof(Settings_Packet));
+}
+
+void Configurator::savePid() {
+	Pid_Packet pidPckt;
+	pidPckt.pid = m_config.pid;
+	uint8_t crc = checksum((uint8_t*)&pidPckt, sizeof(Pid_Packet)-1);
+	pidPckt.crc = crc;
+
+	m_bBox->writeConfig(1, (uint8_t*)&pidPckt, sizeof(Pid_Packet));
 }
 
 
@@ -151,15 +188,9 @@ void Configurator::handleRxInterrupt(bool reset) {
 			break;
 		case 4:
 			cmd = m_buffer[4];
-//			if(cmd  == CMD_PID_RESP || cmd == CMD_CONF_REQ || cmd == CMD_CONF_RESP || cmd == CMD_CONFIG_DEFAULT) {
-				payloadSize = m_buffer[5];
-				m_state = 6;
-				remLen = payloadSize;
-//			}
-//			else {
-//				m_state = 0;
-//				remLen = 1;
-//			}
+			payloadSize = m_buffer[5];
+			m_state = 6;
+			remLen = payloadSize;
 			break;
 		case 6:
 			uint8_t crc = m_buffer[payloadSize + 5];
@@ -167,7 +198,7 @@ void Configurator::handleRxInterrupt(bool reset) {
 
 			if(crc == crc_eval){
 				if(cmd == CMD_PID_RESP) {
-					PID_t* pids = (PID_t*)(&m_buffer[6]);
+					Pid* pids = (Pid*)(&m_buffer[6]);
 					m_motor->setPIDGains(ROLL, pids->roll.p, pids->roll.i, pids->roll.d, pids->roll.rp);
 					m_motor->setPIDGains(PITCH, pids->pitch.p, pids->pitch.i, pids->pitch.d, pids->pitch.rp);
 					m_motor->setPIDGains(YAW, pids->yaw.p, pids->yaw.i, pids->yaw.d, pids->yaw.rp);
@@ -175,25 +206,27 @@ void Configurator::handleRxInterrupt(bool reset) {
 					m_motor->setPIDGains(PY, pids->py.p, pids->py.i, pids->py.d, pids->py.rp);
 					m_motor->setPIDGains(THROTTLE, pids->alt.p, pids->alt.i, pids->alt.d, pids->alt.rp);
 
-					memcpy((uint8_t*)&(m_config.Pid), (uint8_t*)pids, sizeof(PID_t));
-					m_saveNewConfig = true;
+					memcpy((uint8_t*)&(m_config.pid), (uint8_t*)pids, sizeof(Pid));
+					m_eraseConfig = true;
 				}
 				else if(cmd == CMD_CONF_REQ) {
 					m_sendConfig = true;
 				}
 				else if(cmd == CMD_CONF_RESP) {
 					memcpy((uint8_t*)&m_config, (uint8_t*)&m_buffer[6], sizeof(Config));
-					m_saveNewConfig = true;
+					m_eraseConfig = true;
 				}
 				else if(cmd == CMD_CONFIG_DEFAULT) {
 					loadDefaultConfig();
 					m_sendConfig = true;
+					m_eraseConfig = true;
 				}
 
 				else if(cmd == CMD_RESET) {
-					Application::buzzerOn();
-					TimeTick::delay_ms(300);
-					Application::buzzerOff();
+//					Application::buzzerOn();
+//					TimeTick::delay_ms(300);
+//					Application::buzzerOff();
+					Buzzer::getInstance()->buzz();
 					NVIC_SystemReset();
 				}
 			}
@@ -210,9 +243,20 @@ void Configurator::taskFunc(timetick_us currenTimeUs) {
 	static bool sending = false;
 	static Config_Packet config;
 
-	if(m_saveNewConfig) {
-		saveConfig();
-		m_saveNewConfig = false;
+	if(m_eraseConfig) {
+		if(m_bBox->eraseConfig()) {
+			m_saveNewSettings = true;
+			m_saveNewPid = true;
+			m_eraseConfig = false;
+		}
+	}
+	else if(m_saveNewSettings) {
+		saveSettings();
+		m_saveNewSettings = false;
+	}
+	else if(m_saveNewPid) {
+		savePid();
+		m_saveNewPid = false;
 	}
 	else if(m_sendConfig && m_txReady && (sendingState == SendingConfig || sendingState == SendingNone)) {
 		if(!sending) {

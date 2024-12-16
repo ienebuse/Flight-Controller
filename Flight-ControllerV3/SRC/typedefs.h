@@ -63,8 +63,9 @@
 #define BAROMETER_PERIOD_US			(uint32_t)100000
 #define RECEIVER_PERIOD_US			(uint32_t)20000
 #define METER_PERIOD_US				(uint32_t)1000000
-#define GPS_PERIOD_US				(uint32_t)1000000
+#define GPS_PERIOD_US				(uint32_t)100000
 #define LOGGER_PERIOD_US			(uint32_t)30000
+#define BUZZER_PERIOD_US			(uint32_t)50000
 
 
 #if PROTOTYPE
@@ -74,6 +75,7 @@
 #endif
 
 #define DECENT_RATE_MMpS			(uint16_t)200
+#define THROTTLE_SENSITIVITY		(uint8_t)1
 
 #define USE_MADGWICK				0
 #define USE_MAHONY					0
@@ -94,11 +96,17 @@
 	#define OPTICAL_FLOW_USE_MSP		0
 	#define OPTICAL_FLOW_USE_MAVLINK	0
 	#define OPTICAL_FLOW_USE_MICROLINK	1
+	#define OPTICAL_FLOW_USE_UPIXEL		0
 #else
 	#define OPTICAL_FLOW_USE_MSP		0
 	#define OPTICAL_FLOW_USE_MAVLINK	0
 	#define OPTICAL_FLOW_USE_MICROLINK	1
+	#define OPTICAL_FLOW_USE_UPIXEL		0
 #endif
+
+#define OPTICAL_FLOW_ROT_CCW			(uint16_t)180
+#define OPTICAL_FLOW_INVERT_X			0
+#define OPTICAL_FLOW_INVERT_Y			0
 
 #define OPTICAL_FLOW_MAX_VEL		(uint16_t)700
 
@@ -286,6 +294,7 @@ typedef struct __attribute__ ((packed)){
 typedef struct __attribute__ ((packed)) CompassData {
 	Vector_t<float> mag;
 	float heading;
+	bool status;
 }CompassData_t;
 
 

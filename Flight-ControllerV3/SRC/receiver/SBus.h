@@ -8,9 +8,9 @@
 #ifndef RECEIVER_SBUS_H_
 #define RECEIVER_SBUS_H_
 
-#include <UartReceiver.h>
 #include <receiver/iSBusRx.h>
 #include <Task.h>
+#include <uart/UartReceiver.h>
 
 
 //typedef void (*callback)(SbusData);

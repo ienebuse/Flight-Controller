@@ -13,7 +13,7 @@
 #include <meter/Meter.h>
 #include <barometer/Barometer.h>
 #include <FlightControl.h>
-#include <GPS.h>
+#include <gps/GPS.h>
 #include <OpticalFlow.h>
 
 #include <Task.h>

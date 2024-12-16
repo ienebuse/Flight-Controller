@@ -17,6 +17,7 @@ typedef struct __attribute__ ((packed)) {
 	ControlLog ctrlLog;
 	OptFlw_Data optFlw;
 	float battVoltage;
+	float battCapacity;
 	float altitude;
 	float lat;
 	float lon;

@@ -30,6 +30,7 @@ typedef enum {
 	LOG_TASK,
 	HEARTBEAT_TASK,
 	METER_TASK,
+	BUZZER_TASK,
 	NUM_TASK,
 }TaskId_t;
 

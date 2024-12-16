@@ -56,25 +56,34 @@ public:
 
     float getBatteryVoltage();
 
+    float getBatteryCapacity();
+
     float getCurrent();
 
     /**
       * @brief  Update the ADC channel values with the converted values in the buffer
       * @param  hadc The ADC handle to be updated
       */
-    static void update(ADC_HandleTypeDef* hadc);
+    static void update(ADC_HandleTypeDef* hadc, bool cmplt = true);
 
     static float getVref();
+
+    static bool batteryCritical() {
+    	return batteryVoltage < batterLowThreshold;
+    }
 
     virtual void taskFunc(timetick_us currenTimeUs);
 
 
 
 private:
-    static uint32_t m_Adc3Buff[3]; 			/**< Buffers for ADC conversion results */
+//    static constexpr uint8_t ADC_CURRENT_BUFF_SIZE{10};
+//    static constexpr uint8_t HALF_BUFFER{ADC_CURRENT_BUFF_SIZE / 2};
+//    static uint32_t m_AdcCurrentBuff[ADC_CURRENT_BUFF_SIZE]; 			/**< Buffers for ADC conversion results */
     static volatile uint32_t m_ChannelValues[3]; 			/**< Array to hold ADC channel values */
     static volatile float VREF;
-	float batteryVoltage{0};
+	static float batteryVoltage, batteryCapacity;
+	static float batterLowThreshold;
 	timetick_us m_lastTime;
 };
 

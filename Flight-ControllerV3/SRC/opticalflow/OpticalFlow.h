@@ -8,12 +8,12 @@
 #ifndef OPTICALFLOW_H_
 #define OPTICALFLOW_H_
 
-#include <UartReceiver.h>
 #include <typedefs.h>
 #include <TimeTick.h>
 #include <Task.h>
 #include <LowPassFilter.h>
 #include <AHRS.h>
+#include <uart/UartReceiver.h>
 
 typedef union {
 	uint8_t buff[2];

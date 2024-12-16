@@ -8,7 +8,7 @@
 #ifndef BAROMETER_BAROMETER_H_
 #define BAROMETER_BAROMETER_H_
 
-#include <DPS310.h>
+#include <sensors/dps/DPS310.h>
 #include <Task.h>
 
 class Barometer : public Task{

@@ -166,6 +166,12 @@ SECTIONS
     . = . + _Min_Stack_Size;
     . = ALIGN(8);
   } >RAM_D1
+  
+  ._ramd3_aka_sram4(NOLOAD) :
+  {
+	. = ALIGN(4);
+	*(._ramd3_*)
+  } >RAM_D3
 
   /* Remove information from the standard libraries */
   /DISCARD/ :

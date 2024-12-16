@@ -12,6 +12,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <Configurator.h>
+#include <math.h>
 
 #define _SensorData(f) -f.acc.x, -f.acc.y, f.acc.z, -f.gyro.x*DEG2RAD, -f.gyro.y*DEG2RAD, f.gyro.z*DEG2RAD, -f.mag.y, f.mag.x, f.mag.z
 #define _SensorDataNoMag(f) -f.acc.x, -f.acc.y, f.acc.z, -f.gyro.x*DEG2RAD, -f.gyro.y*DEG2RAD, f.gyro.z*DEG2RAD
@@ -154,12 +155,13 @@ void AHRS::init(SPI_Config config1, SPI_Config config2, I2C_config mag_config) {
 //	waitForSteadyGyro();
 	calibrateGyro();
 
-#if (USE_MAGNETOMETER == 1)
-	setCompassRef();
-#if USE_EKF
-	filter.init(getCompassRef());
-#endif
-#endif
+	if(Configurator::getConfig().settings.UseMagnetometer) {
+		setCompassRef();
+	}
+
+//	if(Configurator::getConfig().settings.UseEKF) {
+//		(EKF)filter.init(getCompassRef());
+//	}
 }
 
 static void sendData(uint8_t* data, uint16_t len) {
@@ -219,22 +221,26 @@ void AHRS::updateSensorData() {
 //	snprintf(data,80, "%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f\r\n",(float)(currentTime-t2)/1000000,gyro2.x,gyro2.y,gyro2.z,m_sensorData.gyro.x,m_sensorData.gyro.y,m_sensorData.gyro.z);
 //	sendData((uint8_t*)data, strlen(data));
 	t2 = currentTime;
-#if (USE_MAGNETOMETER == 1)
-	if(currentTime - lastTime >= MAG_ACQ_TIME_US) {
-//		HAL_GPIO_WritePin(TP_GPIO_Port, TP_Pin, GPIO_PIN_SET);
-		CompassData compassData = m_compassSensor.getCompass();
-		m_sensorData.mag.x = compassData.mag.x;
-		m_sensorData.mag.y = compassData.mag.y;
-		m_sensorData.mag.z = compassData.mag.z;
-		m_Heading = compassData.heading;
-		m_magAvailable = true;
-		lastTime = currentTime;
-//		HAL_GPIO_WritePin(TP_GPIO_Port, TP_Pin, GPIO_PIN_RESET);
+
+	if(Configurator::getConfig().settings.UseMagnetometer) {
+		if(currentTime - lastTime >= MAG_ACQ_TIME_US) {
+	//		HAL_GPIO_WritePin(TP_GPIO_Port, TP_Pin, GPIO_PIN_SET);
+			CompassData compassData = m_compassSensor.getCompass();
+			if(compassData.status) {
+				m_sensorData.mag.x = compassData.mag.x;
+				m_sensorData.mag.y = compassData.mag.y;
+				m_sensorData.mag.z = compassData.mag.z;
+	//			m_Heading = compassData.heading;
+				m_Heading = _getHeading();
+				m_magAvailable = true;
+				lastTime = currentTime;
+			}
+	//		HAL_GPIO_WritePin(TP_GPIO_Port, TP_Pin, GPIO_PIN_RESET);
+		}
+		else {
+			m_magAvailable = false;
+		}
 	}
-	else {
-		m_magAvailable = false;
-	}
-#endif
 
 	m_attitude.gyro = getGyro();
 	m_attitude.accel = getAccel();
@@ -283,14 +289,6 @@ Attitude AHRS::fushionUpdate(float dT) {
 #else
 	m_attitude.euler = quat2Euler(m_attitude.quat);
 #endif
-//	m_attitude.quat = euler2Quaternion(m_attitude.euler);
-//	m_attitude.euler = quat2Euler(m_attitude.quat);
-
-//	m_attitude.acc = getGroundAcc(m_attitude.accel);
-//
-//	m_attitude.vel.x += m_attitude.acc.x * 0.0021 * 9.81;
-//	m_attitude.vel.y += m_attitude.acc.y * 0.0021 * 9.81;
-//	m_attitude.vel.z += m_attitude.acc.z * 0.0021 * 9.81;
 
 	return m_attitude;
 }
@@ -299,6 +297,28 @@ void AHRS::filterGyro() {
 	m_sensorData.gyro.x = gxf.apply(m_sensorData.gyro.x);
 	m_sensorData.gyro.y = gyf.apply(m_sensorData.gyro.y);
 	m_sensorData.gyro.z = gzf.apply(m_sensorData.gyro.z);
+}
+
+float AHRS::_getHeading() {
+	float r = atan2f(-m_sensorData.acc.y, m_sensorData.acc.z);//m_attitude.euler.r;
+	float p = atan2f(m_sensorData.acc.x, sqrtf(m_sensorData.acc.y * m_sensorData.acc.y + m_sensorData.acc.z * m_sensorData.acc.z)) - M_PI/6;
+//	float p = (m_attitude.euler.p - 30) * DEG2RAD;
+//	float r = m_attitude.euler.r * DEG2RAD;
+	float mx = -m_sensorData.mag.y;
+	float my = m_sensorData.mag.x;
+	float mz = m_sensorData.mag.z;
+	// Tilt compensation
+	float mag_x = mx * cos(p) + mz * sin(p);
+	float mag_y = mx * sin(r) * sin(p) + my * cos(r) - mz * sin(r) * cos(p);
+
+	m_Heading = atan2(mag_y, mag_x) * RAD2DEG;
+	m_Heading += 180;
+//	m_Heading = (int)( m_Heading + 360) % 360;
+//	if(m_Heading < 0) {
+//		m_Heading += 360;
+//	}
+	return (float)(360 - (int)m_Heading);
+//	return m_Heading;
 }
 
 

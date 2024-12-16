@@ -83,6 +83,8 @@ static float getIncreament(float scale, float input) {
 
 void Application::init(HAL_Devices_t *devices) {
 
+//	__disable_irq();
+
 	m_devices = devices;
 	TimeTick::init(m_devices->appTmr);
 
@@ -122,14 +124,14 @@ void Application::init(HAL_Devices_t *devices) {
 
 	I2C_config magConfig = {
 			.i2cBus = &m_i2cBus,
-			.devAddr = Configurator::getConfig().MagDevAddr,
+			.devAddr = Configurator::getConfig().settings.MagDevAddr,
 	};
 
 	m_ahrs.init(imuConfig1, imuConfig2, magConfig);
 	m_ahrs.setTaskInfo(FUSION_TASK, PRIORITY_REALTIME, PRIORITY_REALTIME, 0, IMU_SAMPLING_PERIOD_US);
 	m_scheduler.addTask(&m_ahrs);
 
-	if(config.UseBarometer) {
+	if(config.settings.UseBarometer) {
 		m_barometer.init(&m_i2cBus);
 		m_barometer.setTaskInfo(BAROMETER_TASK, PRIORITY_MEDIUM, PRIORITY_MEDIUM, 0, BAROMETER_PERIOD_US);
 		m_scheduler.addTask(&m_barometer);
@@ -147,13 +149,13 @@ void Application::init(HAL_Devices_t *devices) {
 	m_meter.setTaskInfo(METER_TASK, PRIORITY_HIGH, PRIORITY_HIGH, 0, METER_PERIOD_US);
 	m_scheduler.addTask(&m_meter);
 
-	if(config.UseGPS) {
+	if(config.settings.UseGPS) {
 		m_gps.init(devices->gpsUart);
 		m_log.setTaskInfo(GPS_TASK, PRIORITY_LOW, PRIORITY_LOW, 0, GPS_PERIOD_US);
 		m_scheduler.addTask(&m_gps);
 	}
 
-	if(config.EnableLogging) {
+	if(config.settings.EnableLogging) {
 		m_log.init();
 		m_log.setTaskInfo(LOG_TASK, PRIORITY_LOW, PRIORITY_LOW, 0, LOGGER_PERIOD_US);
 		m_scheduler.addTask(&m_log);
@@ -166,6 +168,12 @@ void Application::init(HAL_Devices_t *devices) {
 	m_log.setTaskInfo(OPTICAL_FLOW_TASK, PRIORITY_HIGH, PRIORITY_HIGH, 0, OPT_FLW_PERIOD_US);
 	m_scheduler.addTask(&m_optflw);
 
+	m_buzzer.init();
+	m_buzzer.setTaskInfo(BUZZER_TASK, PRIORITY_MEDIUM, PRIORITY_MEDIUM, 0, BUZZER_PERIOD_US);
+	m_scheduler.addTask(&m_buzzer);
+
+//	__enable_irq();
+
 }
 
 void Application::run() {
@@ -174,7 +182,6 @@ void Application::run() {
 
 	buzzerOn();
 	TimeTick::delay_ms(1000);
-//	batteryVoltage = m_meter.getBatteryVoltage();
 	buzzerOff();
 
 	while (1) {
@@ -410,19 +417,52 @@ void Application::checkBlackBloxRead(uint16_t cmd) {
 	lastTime = currentTime;
 }
 
+static bool isSwitchStable(int16_t* sw, uint8_t size) {
+	int16_t val = sw[0];
+	for(uint8_t i = 1; i < size; i++) {
+		if(sw[i] != val) {
+			return false;
+		}
+	}
+	return true;
+}
+
+static float stickAvg(float* sw, uint8_t size) {
+	float sum = 0;
+	for(uint8_t i = 0; i < size; i++) {
+		sum += sw[i];
+	}
+	return sum/size;
+}
+
 void Application::handleChannelData(SbusData sbusData) {
 	static timetick_us disarmTimer = 0;
 	static bool disarmStarted = false;
 	timetick_us currentTime = TimeTick::getTimeUs();
+	static const int BUFF_SIZE = 5;
 
-	m_rxCh.roll = RPY(sbusData.ch[0]);
-	m_rxCh.pitch = RPY(sbusData.ch[1]);
-	m_rxCh.throttle = THROTTLE(sbusData.ch[2]);
-	m_rxCh.yaw = RPY(sbusData.ch[3]);
-	m_rxCh.SL1 = SW(sbusData.ch[4]);
-	m_rxCh.SL2 = SW(sbusData.ch[5]);
-	m_rxCh.SR2 = SW(sbusData.ch[6]);
-	m_rxCh.SR1 = SW(sbusData.ch[7]);
+	static float roll[BUFF_SIZE], pitch[BUFF_SIZE], throttle[BUFF_SIZE], yaw[BUFF_SIZE];
+	static int16_t sl1[BUFF_SIZE], sl2[BUFF_SIZE], sr1[BUFF_SIZE], sr2[BUFF_SIZE];
+	static uint8_t index = 0;
+
+	roll[index] = RPY(sbusData.ch[0]);
+	pitch[index] = RPY(sbusData.ch[1]);
+	throttle[index] = THROTTLE(sbusData.ch[2]);
+	yaw[index] = RPY(sbusData.ch[3]);
+	sl1[index] = (int16_t)SW(sbusData.ch[4]);
+	sl2[index] = (int16_t)SW(sbusData.ch[5]);
+	sr2[index] = (int16_t)SW(sbusData.ch[6]);
+	sr1[index] = (int16_t)SW(sbusData.ch[7]);
+	index  = (index + 1) % BUFF_SIZE;
+
+	m_rxCh.roll = stickAvg(roll, BUFF_SIZE);
+	m_rxCh.pitch = stickAvg(pitch, BUFF_SIZE);
+	m_rxCh.throttle = stickAvg(throttle, BUFF_SIZE);
+	m_rxCh.yaw = stickAvg(yaw, BUFF_SIZE);
+	m_rxCh.SL1 = isSwitchStable(sl1, BUFF_SIZE) ? sl1[0] : m_rxCh.SL1;
+	m_rxCh.SL2 = isSwitchStable(sl2, BUFF_SIZE) ? sl2[0] : m_rxCh.SL2;
+	m_rxCh.SR2 = isSwitchStable(sr2, BUFF_SIZE) ? sr2[0] : m_rxCh.SR2;
+	m_rxCh.SR1 = isSwitchStable(sr1, BUFF_SIZE) ? sr1[0] : m_rxCh.SR1;
 
 	if(m_rxCh.throttle < 2 && m_rxCh.yaw < 2 && m_rxCh.roll > 98 && m_rxCh.pitch < 2) {
 		if(m_rxCh.SL2 < 40) {
@@ -456,5 +496,52 @@ void Application::handleChannelData(SbusData sbusData) {
 	checkBlackBloxErase(m_rxCh.SL1);
 	checkBlackBloxRead(m_rxCh.SL1);
 }
+
+//void Application::handleChannelData(SbusData sbusData) {
+//	static timetick_us disarmTimer = 0;
+//	static bool disarmStarted = false;
+//	timetick_us currentTime = TimeTick::getTimeUs();
+//
+//	m_rxCh.roll = RPY(sbusData.ch[0]);
+//	m_rxCh.pitch = RPY(sbusData.ch[1]);
+//	m_rxCh.throttle = THROTTLE(sbusData.ch[2]);
+//	m_rxCh.yaw = RPY(sbusData.ch[3]);
+//	m_rxCh.SL1 = SW(sbusData.ch[4]);
+//	m_rxCh.SL2 = SW(sbusData.ch[5]);
+//	m_rxCh.SR2 = SW(sbusData.ch[6]);
+//	m_rxCh.SR1 = SW(sbusData.ch[7]);
+//
+//	if(m_rxCh.throttle < 2 && m_rxCh.yaw < 2 && m_rxCh.roll > 98 && m_rxCh.pitch < 2) {
+//		if(m_rxCh.SL2 < 40) {
+//			m_flightControl.armMotors(true);
+//			disarmStarted = false;
+//			disarmTimer = 0;
+//		}
+//		else {
+//			NVIC_SystemReset();
+//		}
+//	}
+//	else if(m_rxCh.SL2 > 40) {
+//		if(disarmStarted && (currentTime - disarmTimer > 400000)) {
+//			disarmStarted = false;
+//			disarmTimer = 0;
+//		}
+//		else if(disarmStarted && (currentTime - disarmTimer > 300000)) {
+//			m_flightControl.armMotors(false);
+//			disarmStarted = false;
+//			disarmTimer = 0;
+//		}
+//		else if(!disarmStarted) {
+//			disarmStarted = true;
+//			disarmTimer = currentTime;
+//		}
+//
+//
+//	}
+//
+//	checkPIDRequest(m_rxCh.SR1);
+//	checkBlackBloxErase(m_rxCh.SL1);
+//	checkBlackBloxRead(m_rxCh.SL1);
+//}
 
 

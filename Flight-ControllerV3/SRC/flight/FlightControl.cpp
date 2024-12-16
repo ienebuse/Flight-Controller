@@ -12,7 +12,7 @@
 #include <config.h>
 
 static float motorConstraint(float m) {
-	return MIN(Configurator::getConfig().MotorMax,MAX(Configurator::getConfig().MotorMin,m));
+	return MIN(Configurator::getConfig().settings.MotorMax,MAX(Configurator::getConfig().settings.MotorMin,m));
 }
 
 FlightControl::FlightControl(AHRS *ahrs, OpticalFlow* optflw,  Channel* rxCh) : m_ahrs(ahrs), m_optflw(optflw), m_rxCh(rxCh) {
@@ -25,7 +25,7 @@ FlightControl::~FlightControl() {
 }
 
 void FlightControl::init(TIM_HandleTypeDef* htim) {
-	PID_t pids = Configurator::getConfig().Pid;
+	Pid pids = Configurator::getConfig().pid;
 
 	m_pid[ROLL].setGains(pids.roll.p, pids.roll.i, pids.roll.d, pids.roll.rp);
 	m_pid[PITCH].setGains(pids.pitch.p, pids.pitch.i, pids.pitch.d, pids.pitch.rp);
@@ -112,10 +112,10 @@ void FlightControl::setMotorsSpeed(float frontRight, float rearRight, float fron
 float FlightControl::scaleAngle(float angle, eAxis axis) {
 	float angleScale = 0;
 //	if(axis == YAW) {
-//		angleScale = ((angle + Configurator::getConfig().MaxYawAngle)*200/(2*Configurator::getConfig().MaxYawAngle)) - 100;
+//		angleScale = ((angle + Configurator::getConfig().settings.MaxYawAngle)*200/(2*Configurator::getConfig().settings.MaxYawAngle)) - 100;
 //	}
 //	else {
-//		angleScale = ((angle + Configurator::getConfig().MaxAngle)*200/(2*Configurator::getConfig().MaxAngle)) - 100;
+//		angleScale = ((angle + Configurator::getConfig().settings.MaxAngle)*200/(2*Configurator::getConfig().settings.MaxAngle)) - 100;
 //	}
 
 	if(axis == YAW) {
@@ -129,12 +129,12 @@ float FlightControl::scaleAngle(float angle, eAxis axis) {
 
 float FlightControl::scaleAngleRate(float rate, eAxis axis) {
 	float rateScale = 0;
-	rateScale = ((-rate + Configurator::getConfig().MaxRate)*200/(2*Configurator::getConfig().MaxRate)) - 100;
+	rateScale = ((-rate + Configurator::getConfig().settings.MaxRate)*200/(2*Configurator::getConfig().settings.MaxRate)) - 100;
 	return rateScale;
 }
 
 float FlightControl::getCurrentHeight(float height) {
-	float currentHeight = 100 * height / Configurator::getConfig().OptFlwMaxHeight;
+	float currentHeight = 100 * height / Configurator::getConfig().settings.OptFlwMaxHeight;
 	return currentHeight;
 }
 
@@ -164,7 +164,7 @@ static float scaleMotor(float mVal, float min, float max) {
 }
 
 void FlightControl::run(Attitude currentAttitude,  Channel* rxCh, timetick_us currentTime) {
-	static float heightSetpoint = (float)Configurator::getConfig().OptFlwHoverHeight;
+	static float heightSetpoint = (float)Configurator::getConfig().settings.OptFlwHoverHeight;
 	static timetick_us lastTime = 0;
 	static float lastHeight = 0;
 	static float heightRate = 0;
@@ -180,6 +180,8 @@ void FlightControl::run(Attitude currentAttitude,  Channel* rxCh, timetick_us cu
 	float rollPIDSetPoint = 0, pitchPIDSetPoint = 0;
 	float rollPid = 0, pitchPid = 0, yawPid = 0;
 	static float decentRate = (float)DECENT_RATE_MMpS * (float)FLIGHT_CONTROL_PERIOD_US / 1000000;
+
+	static const float throttleScale = 0.001;
 
 
 	if(m_isArmed) {
@@ -205,12 +207,12 @@ void FlightControl::run(Attitude currentAttitude,  Channel* rxCh, timetick_us cu
 		lastHeight = optFlwData.h;
 
 
-		if(rxCh->SL1 < 40 && optFlwData.h > 190) {
+		if((rxCh->SL1 < 40 && optFlwData.h > 150)  || Meter::batteryCritical()) {
 			LAND = true;
 		}
 
 		if(rxCh->SR1 < 40) {
-			if(rxCh->pitch == 50 && rxCh->roll == 50 && optFlwData.h > 180) {
+			if(rxCh->pitch == 50 && rxCh->roll == 50 && optFlwData.h > 150) {
 				HOVER = true;
 			}
 			controlType = CONTROL_POS;
@@ -231,7 +233,13 @@ void FlightControl::run(Attitude currentAttitude,  Channel* rxCh, timetick_us cu
 			}
 		}
 		else {
-			heightSetpoint = (float)Configurator::getConfig().OptFlwHoverHeight;
+			float throttleRate = 2*(rxCh->throttle - 50);
+			if(rxCh->SR2 < 40) {
+				heightSetpoint += throttleRate * (float)Configurator::getConfig().settings.ThrottleSensitivity * throttleScale;
+			}
+			else {
+				heightSetpoint = (float)Configurator::getConfig().settings.OptFlwHoverHeight;
+			}
 		}
 
 //		HOVER = true;
@@ -250,8 +258,8 @@ void FlightControl::run(Attitude currentAttitude,  Channel* rxCh, timetick_us cu
 			rollSetPoint = (rollPIDSetPoint - RPY_MIN_ANGLE) * 100 / (RPY_MAX_ANGLE - RPY_MIN_ANGLE);
 			pitchSetPoint = (pitchPIDSetPoint - RPY_MIN_ANGLE) * 100 / (RPY_MAX_ANGLE - RPY_MIN_ANGLE);
 
-			m_pid[ROLL].updateSetpoint(rollSetPoint);
-			m_pid[PITCH].updateSetpoint(pitchSetPoint);
+			m_pid[ROLL].updateSetpoint(rollSetPoint, PID_POS);
+			m_pid[PITCH].updateSetpoint(pitchSetPoint, PID_POS);
 		}
 		else {
 			rollSetPoint = 100-rxCh->roll;
@@ -289,12 +297,12 @@ void FlightControl::run(Attitude currentAttitude,  Channel* rxCh, timetick_us cu
 				throttlePid = throttleVal;
 			}
 		}
-		else if(rxCh->SL1 > 60) {
-			throttleVal = rxCh->throttle;
-			throttle = 0;
-			m_pid[THROTTLE].reset();
-			throttlePid = 0;
-		}
+//		else if(rxCh->SL1 > 60) {
+//			throttleVal = rxCh->throttle;
+//			throttle = 0;
+//			m_pid[THROTTLE].reset();
+//			throttlePid = 0;
+//		}
 
 		/*
 		 * 	M4				 M2
@@ -318,7 +326,7 @@ void FlightControl::run(Attitude currentAttitude,  Channel* rxCh, timetick_us cu
 		m4 = motorConstraint(m4);
 
 		if(rxCh->SR2 > 40 || idle || optFlwData.h > 500) {
-			setMotorsSpeed(Configurator::getConfig().MotorIdleLimit);
+			setMotorsSpeed(Configurator::getConfig().settings.MotorIdleLimit);
 		}
 		else {
 #if PROTOTYPE
