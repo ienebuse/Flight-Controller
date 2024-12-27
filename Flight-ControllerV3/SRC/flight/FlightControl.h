@@ -148,6 +148,10 @@ public:
 
 	float scalePid(float pid);
 
+	static inline void land() {
+		LAND = true;
+	}
+
 //	sMotor* run(Attitude currentAttitude,  Channel* rxCh, timetick_us currentTime);
 	void run(Attitude currentAttitude,  Channel* rxCh, timetick_us currentTime);
 
@@ -164,7 +168,7 @@ private :
 //	PID m_xPosPID, m_yPosPID;
 
 	bool m_isArmed = false;
-	bool LAND = false;
+	static bool LAND;
 	Pid_Vals m_pidVals;
 };
 

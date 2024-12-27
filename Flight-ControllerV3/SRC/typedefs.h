@@ -66,6 +66,7 @@
 #define GPS_PERIOD_US				(uint32_t)100000
 #define LOGGER_PERIOD_US			(uint32_t)30000
 #define BUZZER_PERIOD_US			(uint32_t)50000
+#define OSD_PERIOD_US				(uint32_t)50000
 
 
 #if PROTOTYPE
@@ -104,7 +105,7 @@
 	#define OPTICAL_FLOW_USE_UPIXEL		0
 #endif
 
-#define OPTICAL_FLOW_ROT_CCW			(uint16_t)180
+#define OPTICAL_FLOW_ROT_CCW			(uint16_t)90
 #define OPTICAL_FLOW_INVERT_X			0
 #define OPTICAL_FLOW_INVERT_Y			0
 
@@ -119,6 +120,9 @@
 	#define OPTICAL_FLOW_MAX_HEIGHT	(uint16_t)800
 #endif
 
+#define ENABLE_OSD						1
+#define OSD_USE_NTSC_PAL				2
+//#define OSD_USE_NTSC					0
 
 
 #define THROTTLE_LIMIT	1

@@ -41,7 +41,8 @@ Application::Application() :
 		m_flightControl(&m_ahrs, &m_optflw, &m_rxCh),
 		m_blackBox(&m_ahrs, &m_flightControl, &m_meter, &m_gps, &m_barometer, &m_optflw),
 		m_log(&m_ahrs, &m_flightControl, &m_meter, &m_gps, &m_barometer, &m_optflw),
-		m_configurator(&m_ahrs, &m_flightControl, &m_meter, &m_gps, &m_barometer, &m_optflw, &m_blackBox)
+		m_configurator(&m_ahrs, &m_flightControl, &m_meter, &m_gps, &m_barometer, &m_optflw, &m_blackBox),
+		m_osd(&m_meter)
 {
 	// TODO Auto-generated constructor stub
 
@@ -122,6 +123,13 @@ void Application::init(HAL_Devices_t *devices) {
 			.SPI_HS_CLK = 24000000
 	};
 
+	SPI_Config osdConfig = {
+			.hspi = devices->osdSPI,
+			.csPort = OSD_CS_GPIO_Port,
+			.csPin = OSD_CS_Pin
+	};
+
+
 	I2C_config magConfig = {
 			.i2cBus = &m_i2cBus,
 			.devAddr = Configurator::getConfig().settings.MagDevAddr,
@@ -129,11 +137,13 @@ void Application::init(HAL_Devices_t *devices) {
 
 	m_ahrs.init(imuConfig1, imuConfig2, magConfig);
 	m_ahrs.setTaskInfo(FUSION_TASK, PRIORITY_REALTIME, PRIORITY_REALTIME, 0, IMU_SAMPLING_PERIOD_US);
+	m_ahrs.registerOSD(&m_osd);
 	m_scheduler.addTask(&m_ahrs);
 
 	if(config.settings.UseBarometer) {
 		m_barometer.init(&m_i2cBus);
 		m_barometer.setTaskInfo(BAROMETER_TASK, PRIORITY_MEDIUM, PRIORITY_MEDIUM, 0, BAROMETER_PERIOD_US);
+		m_barometer.registerOSD(&m_osd);
 		m_scheduler.addTask(&m_barometer);
 	}
 
@@ -147,11 +157,13 @@ void Application::init(HAL_Devices_t *devices) {
 
 	m_meter.init();
 	m_meter.setTaskInfo(METER_TASK, PRIORITY_HIGH, PRIORITY_HIGH, 0, METER_PERIOD_US);
+	m_meter.registerOSD(&m_osd);
 	m_scheduler.addTask(&m_meter);
 
 	if(config.settings.UseGPS) {
 		m_gps.init(devices->gpsUart);
-		m_log.setTaskInfo(GPS_TASK, PRIORITY_LOW, PRIORITY_LOW, 0, GPS_PERIOD_US);
+		m_gps.setTaskInfo(GPS_TASK, PRIORITY_LOW, PRIORITY_LOW, 0, GPS_PERIOD_US);
+		m_gps.registerOSD(&m_osd);
 		m_scheduler.addTask(&m_gps);
 	}
 
@@ -166,11 +178,18 @@ void Application::init(HAL_Devices_t *devices) {
 
 	m_optflw.init(devices->optflwUart, &m_ahrs);
 	m_log.setTaskInfo(OPTICAL_FLOW_TASK, PRIORITY_HIGH, PRIORITY_HIGH, 0, OPT_FLW_PERIOD_US);
+	m_optflw.registerOSD(&m_osd);
 	m_scheduler.addTask(&m_optflw);
 
 	m_buzzer.init();
 	m_buzzer.setTaskInfo(BUZZER_TASK, PRIORITY_MEDIUM, PRIORITY_MEDIUM, 0, BUZZER_PERIOD_US);
 	m_scheduler.addTask(&m_buzzer);
+
+#if ENABLE_OSD
+	m_osd.init(osdConfig);
+	m_osd.setTaskInfo(OSD_TASK, PRIORITY_MEDIUM, PRIORITY_MEDIUM, 0, OSD_PERIOD_US);
+	m_scheduler.addTask(&m_osd);
+#endif
 
 //	__enable_irq();
 

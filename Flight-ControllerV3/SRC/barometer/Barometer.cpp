@@ -49,6 +49,7 @@ void Barometer::taskFunc(timetick_us currenTimeUs) {
 	m_altData = m_sensor.getContAltitude();
 #else
 	m_altData = m_sensor.getAltitude();
+	m_osd->setOptBaroAltitude(m_altData.altitude);
 //	setTaskPeriod(m_altData.acqTimeUs);
 #endif
 

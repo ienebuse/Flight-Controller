@@ -9,6 +9,7 @@
 #include <typedefs.h>
 #include <Application.h>
 #include <Configurator.h>
+#include <FlightControl.h>
 
 static constexpr float dt_T{0.02/3.6};
 
@@ -116,14 +117,13 @@ void Meter::taskFunc(timetick_us currentTimeUs) {
 		break;
 	}
 	batteryVoltage = getAdcVoltage(ADC_CH_VOLTAGE) * Configurator::getConfig().settings.VoltScale;
-//	if((batteryVoltage < batterLowThreshold) && (currentTimeUs - m_lastTime > batterLowThreshold)) {
-//		Application::buzzerToggle();
-//		m_lastTime = currentTimeUs;
-//	}
-	if((batteryVoltage < batterLowThreshold)) {
-		Buzzer::getInstance()->buzz();
-	}
 
 	batteryCapacity = getAdcVoltage(ADC_CH_CURRENT) * Configurator::getConfig().settings.CurrentScale * dt_T;
+
+	if((batteryVoltage < batterLowThreshold) || (batterLowThreshold == 21 && batteryCapacity > 1100) || (batterLowThreshold == 12 && batteryCapacity > 1300)) {
+		Buzzer::getInstance()->buzz();
+		FlightControl::land();
+	}
+	m_osd->setBatteryInfo(batteryVoltage, batteryCapacity);
 }
 

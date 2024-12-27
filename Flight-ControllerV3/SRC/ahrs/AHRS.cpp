@@ -231,7 +231,7 @@ void AHRS::updateSensorData() {
 				m_sensorData.mag.y = compassData.mag.y;
 				m_sensorData.mag.z = compassData.mag.z;
 	//			m_Heading = compassData.heading;
-				m_Heading = _getHeading();
+				_getHeading();
 				m_magAvailable = true;
 				lastTime = currentTime;
 			}
@@ -317,7 +317,11 @@ float AHRS::_getHeading() {
 //	if(m_Heading < 0) {
 //		m_Heading += 360;
 //	}
-	return (float)(360 - (int)m_Heading);
+	m_Heading = (float)(360 - (int)m_Heading);
+
+	m_osd->setHeading(m_Heading);
+
+	return m_Heading;
 //	return m_Heading;
 }
 

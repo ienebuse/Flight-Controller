@@ -10,6 +10,7 @@
 
 #include <sensors/dps/DPS310.h>
 #include <Task.h>
+#include "osd/IOSD.h"
 
 class Barometer : public Task{
 public:
@@ -22,11 +23,16 @@ public:
 
 	bool dataAvailable();
 
+	inline void registerOSD(IOSD* osd) {
+		m_osd = osd;
+	}
+
 	virtual void taskFunc(timetick_us currenTimeUs);
 
 private:
 	dps310::DPS310 m_sensor;
 	AltData m_altData;
+	IOSD* m_osd;
 
 	void setTaskPeriod(timetick_us period);
 };

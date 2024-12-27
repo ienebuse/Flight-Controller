@@ -11,6 +11,8 @@
 #include <Configurator.h>
 #include <config.h>
 
+bool FlightControl::LAND = false;
+
 static float motorConstraint(float m) {
 	return MIN(Configurator::getConfig().settings.MotorMax,MAX(Configurator::getConfig().settings.MotorMin,m));
 }
@@ -172,7 +174,7 @@ void FlightControl::run(Attitude currentAttitude,  Channel* rxCh, timetick_us cu
 	float dT = (float)(FLIGHT_CONTROL_PERIOD_US)/1000000;
 	static float lastHeightControl = 0;
 	static float heightControl_dT = (float)OPT_FLW_PERIOD_US/1000000;
-	bool HOVER = false;
+	bool HORIZONTAL_STAB = false;
 	static float rollAngle, rollSetPoint;
 	float pitchAngle, pitchSetPoint;
 	static float throttleVal = 0, throttlePid = 0;
@@ -182,16 +184,30 @@ void FlightControl::run(Attitude currentAttitude,  Channel* rxCh, timetick_us cu
 	static float decentRate = (float)DECENT_RATE_MMpS * (float)FLIGHT_CONTROL_PERIOD_US / 1000000;
 
 	static const float throttleScale = 0.001;
+	static bool firstChange = true;
 
 
 	if(m_isArmed) {
 		float m1=0,m2=0,m3=0,m4=0;
 		CNTRL_Type controlType = CONTROL_POS;
+		OptFlw_Data optFlwData = m_optflw->getOptFlowData();
+
+
 		if(rxCh->SR2 > 40 || rxCh->SR1 > 40 || rxCh->pitch != 50 || rxCh->roll != 50) {
 			m_optflw->resetPos();
 			m_pid[PX].reset();
 			m_pid[PY].reset();
+			firstChange = true;
 		}
+//		else if(firstChange) {
+//			float xSP = optFlwData.vx * 0.5;
+//			float ySP = optFlwData.vy * 0.5;
+//
+//			m_pid[PX].updateSetpoint(xSP, PID_XY);
+//			m_pid[PY].updateSetpoint(ySP, PID_XY);
+//
+//			firstChange = false;
+//		}
 
 		if(rxCh->SR2 > 40) {
 			m_pid[ROLL].reset();
@@ -200,7 +216,7 @@ void FlightControl::run(Attitude currentAttitude,  Channel* rxCh, timetick_us cu
 			m_pid[THROTTLE].reset();
 		}
 
-		OptFlw_Data optFlwData = m_optflw->getOptFlowData();
+
 		float height = getCurrentHeight(optFlwData.h);
 
 		heightRate = getCurrentHeight((optFlwData.h - lastHeight) / heightControl_dT);
@@ -213,7 +229,7 @@ void FlightControl::run(Attitude currentAttitude,  Channel* rxCh, timetick_us cu
 
 		if(rxCh->SR1 < 40) {
 			if(rxCh->pitch == 50 && rxCh->roll == 50 && optFlwData.h > 150) {
-				HOVER = true;
+				HORIZONTAL_STAB = true;
 			}
 			controlType = CONTROL_POS;
 		}
@@ -251,7 +267,7 @@ void FlightControl::run(Attitude currentAttitude,  Channel* rxCh, timetick_us cu
 			lastHeightControl = currentTime;
 		}
 
-		if(HOVER) {
+		if(HORIZONTAL_STAB) {
 			rollPIDSetPoint = m_pid[PY].run(optFlwData.py, optFlwData.vy, CONTROL_POS, PID_POS, MODE_D_LOOP, dT);
 			pitchPIDSetPoint = m_pid[PX].run(optFlwData.px, optFlwData.vx, CONTROL_POS, PID_POS, MODE_D_LOOP, dT);
 

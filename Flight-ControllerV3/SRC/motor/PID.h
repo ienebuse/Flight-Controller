@@ -18,6 +18,7 @@ typedef enum {
 	PID_YAW,
 	PID_THROTTLE,
 	PID_POS,
+	PID_XY,
 }PID_Type;
 
 typedef enum {

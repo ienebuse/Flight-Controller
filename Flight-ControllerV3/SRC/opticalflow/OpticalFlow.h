@@ -14,6 +14,7 @@
 #include <LowPassFilter.h>
 #include <AHRS.h>
 #include <uart/UartReceiver.h>
+#include <osd/IOSD.h>
 
 typedef union {
 	uint8_t buff[2];
@@ -113,12 +114,21 @@ public:
 		flwData.wx = wPos.x;
 		flwData.wy = wPos.y;
 
+
+
+//		flwData.px = lPos.x;
+//		flwData.py = lPos.y;
+//		flwData.wx = lPos.x*(q02 + q12 - q22 - q32) + lPos.y*(_2q1q2 - _2q0q3);
+//		flwData.wy = lPos.x*(_2q1q2 + _2q0q3) + lPos.y*(q02 - q12 + q22 - q32);
+
 		return flwData;
 	}
 
 	inline void resetPos() {
 		wPos.x = 0;
 		wPos.y = 0;
+//		lPos.x = 0;
+//		lPos.y = 0;
 	}
 
 	inline Vector_t<float>getWorldPos() {
@@ -127,6 +137,10 @@ public:
 
 	bool parseOptFlwData();
 
+	inline void registerOSD(IOSD* osd) {
+		m_osd = osd;
+	}
+
 	virtual void taskFunc(timetick_us currenTimeUs);
 
 
@@ -134,12 +148,14 @@ private:
 	UartReceiver m_uartRx;
 	UART_HandleTypeDef* m_uart;
 	AHRS* m_ahrs;
+	IOSD* m_osd;
 	uint8_t m_state = 0;
     const uint16_t FUNC_LIDAR = 7937;
     const uint16_t FUNC_FLOW = 7938;
     static const uint8_t MAX_BUFFER_SIZE{50};
     uint8_t buffer[MAX_BUFFER_SIZE];
     Vector_t<float> wPos;
+    Vector_t<float> lPos;
 
     volatile float m_xFlwSum = 0, m_yFlwSum = 0, m_hLidar = 0, m_qlty=0;
     float dT = 0, lastTime = 0, totalTime = 0;

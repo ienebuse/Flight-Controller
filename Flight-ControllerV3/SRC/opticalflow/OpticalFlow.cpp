@@ -554,6 +554,8 @@ uint8_t OpticalFlow::crc8_dvb_s2(uint8_t crc, uint8_t a)
 void OpticalFlow::taskFunc(timetick_us currenTimeUs) {
 //	static char buff[60];
 //	static float z = 0;
+	float vwx = 0;
+	float vwy = 0;
 	if(lidarRdy) {
 		currentFlowData.z = zFilt.apply((float)m_hLidar);
 		lidarRdy = false;
@@ -597,28 +599,26 @@ void OpticalFlow::taskFunc(timetick_us currenTimeUs) {
 
 		float _2q1q2 = 2*q.q1*q.q2;
 		float _2q0q3 = 2*q.q0*q.q3;
-//
-//
-//
-		float vwx = currentFlowData.x*(q02 + q12 - q22 - q32) + currentFlowData.y*(_2q1q2 - _2q0q3);
-		float vwy = currentFlowData.x*(_2q1q2 + _2q0q3) + currentFlowData.y*(q02 - q12 + q22 - q32);
 
-//		float vwx = currentFlowData.x*(1 - 2*(q22+q32)) + currentFlowData.y*(_2q1q2 - _2q0q3);
-//		float vwy = currentFlowData.x*(_2q1q2 + _2q0q3) + currentFlowData.y*(1 - 2*(q12+q32));
 
-//		float vwx = currentFlowData.x*cos(yaw) - currentFlowData.y*sin(yaw);
-//		float vwy = currentFlowData.x*sin(yaw) + currentFlowData.y*cos(yaw);
-
-//		float vlx = vwx*(q02 + q12 - q22 - q32) + vwy*(_2q1q2 + _2q0q3);
-//		float vly = vwx*(_2q1q2 - _2q0q3) + vwy*(q02 - q12 + q22 - q32);
 
 		if(currentFlowData.z > 100) {
+			vwx = currentFlowData.x*(q02 + q12 - q22 - q32) + currentFlowData.y*(_2q1q2 - _2q0q3);
+			vwy = currentFlowData.x*(_2q1q2 + _2q0q3) + currentFlowData.y*(q02 - q12 + q22 - q32);
+//
 			wPos.x += vwx * 0.02f;
 			wPos.y += vwy * 0.02f;
+
+//			lPos.x += currentFlowData.x * 0.02f;
+//			lPos.y += currentFlowData.y * 0.02f;
+
+
 		}
 		else {
 			wPos.x = 0;
 			wPos.y = 0;
+//			lPos.x = 0;
+//			lPos.y = 0;
 		}
 
 //		float h1 = currentFlowData.z * cos(roll) * cos(pitch);
@@ -638,6 +638,9 @@ void OpticalFlow::taskFunc(timetick_us currenTimeUs) {
 		flowCount = 0;
 		totalTime = 0;
 		flowRdy = false;
+
+		float h = currentFlowData.z * (q02 - q12 - q22 + q32);
+		m_osd->setOptFlwAltitude(h);
 	}
 
 }

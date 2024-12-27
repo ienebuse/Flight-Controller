@@ -26,6 +26,7 @@
 #include <gps/GPS.h>
 #include <sensors/dps/DPS310.h>
 #include <Buzzer.h>
+#include <osd/OSD.h>
 
 //#include <Task.h>
 
@@ -125,11 +126,13 @@ private:
 	BlackBok m_blackBox;
 	Buzzer m_buzzer;
 
-
 	Channel m_rxCh;
 	Logger m_log;
 	HeartBeat m_hrtBt;
 	Configurator m_configurator;
+
+
+	OSD m_osd;
 
 
 	bool m_PidMode{false};

@@ -11,6 +11,7 @@
 #include <adc.h>
 #include <tim.h>
 #include <Task.h>
+#include <osd/IOSD.h>
 
 #define TMPSENSOR_V30		0.76
 #define TMPSENSOR_AVGSLOPE	2.5
@@ -72,6 +73,10 @@ public:
     	return batteryVoltage < batterLowThreshold;
     }
 
+	inline void registerOSD(IOSD* osd) {
+		m_osd = osd;
+	}
+
     virtual void taskFunc(timetick_us currenTimeUs);
 
 
@@ -85,6 +90,7 @@ private:
 	static float batteryVoltage, batteryCapacity;
 	static float batterLowThreshold;
 	timetick_us m_lastTime;
+	IOSD* m_osd;
 };
 
 #endif /* METER_METER_H_ */

@@ -18,12 +18,14 @@ typedef struct
     SPI_HandleTypeDef 	*imu1SPI;
     SPI_HandleTypeDef 	*imu2SPI;
     SPI_HandleTypeDef	*bbxSPI;
+    SPI_HandleTypeDef	*osdSPI;
     TIM_HandleTypeDef 	*appTmr;
     TIM_HandleTypeDef	*motorTmr;
     I2C_HandleTypeDef 	*i2cBus;
     UART_HandleTypeDef 	*sBus;
     UART_HandleTypeDef 	*configUart;
     UART_HandleTypeDef 	*optflwUart;
+    UART_HandleTypeDef 	*vtxUart;
 } HAL_Devices_t;
 
 extern HAL_Devices_t halDevices;

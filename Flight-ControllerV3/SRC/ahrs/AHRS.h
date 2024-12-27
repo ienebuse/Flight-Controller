@@ -24,6 +24,7 @@
 #include <Task.h>
 #include <LowPassFilter.h>
 #include <MadgwickFusion.h>
+#include "osd/IOSD.h"
 
 
 typedef struct __attribute__ ((packed)) {
@@ -54,6 +55,10 @@ public:
 	}SensorData_t;
 
 	void init(SPI_Config config1, SPI_Config config2, I2C_config mag_config);
+
+	inline void registerOSD(IOSD* osd) {
+		m_osd = osd;
+	}
 
 	inline void reset() {
 //		filter.reset();
@@ -101,6 +106,7 @@ private:
 
 	SensorData m_sensorData;
 	Attitude m_attitude;
+	IOSD* m_osd;
 	float m_Heading;
     bool m_magAvailable{false};
     Vector_t<float>gyroOffset = {0,0,0};

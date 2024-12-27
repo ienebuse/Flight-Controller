@@ -118,6 +118,7 @@ int main(void)
   MX_USB_DEVICE_Init();
   MX_I2C1_Init();
   MX_TIM15_Init();
+  MX_USART6_UART_Init();
   /* USER CODE BEGIN 2 */
 
 
@@ -134,6 +135,7 @@ int main(void)
 		.gpsUart	= &huart4,
 		.imu1SPI 	= &hspi1,
 		.imu2SPI 	= &hspi4,
+		.osdSPI		= &hspi2,
 		.bbxSPI		= &hspi3,
 		.appTmr		= &htim5,
 		.motorTmr	= &htim2,
@@ -141,6 +143,7 @@ int main(void)
 		.sBus		= &huart2,
 		.configUart	= &huart3,
 		.optflwUart = &hlpuart1,
+		.vtxUart	= &huart6,
 	  };
 
 	initApplication(&halDevices);

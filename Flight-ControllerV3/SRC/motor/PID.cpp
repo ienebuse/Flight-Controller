@@ -48,6 +48,9 @@ void PID::updateSetpoint(float newSetpoint, PID_Type pidType) {
 	else if(pidType == PID_ROLL || pidType == PID_PITCH){
 		m_setPoint = 2*(newSetpoint - 50)*Configurator::getConfig().settings.MaxAngle/MAX_ANGLE;
 	}
+	else if(pidType == PID_XY) {
+		m_setPoint = newSetpoint;
+	}
 	else {
 		m_setPoint = 2*(newSetpoint - 50);
 	}
@@ -111,16 +114,15 @@ float PID::run(float pos, float rate, CNTRL_Type controlType, PID_Type pidType, 
 			rateSp = 2*(1 - pos / m_setPoint);
 			rateSp = MIN(maxAltRateScale(), rateSp);
 		}
+//		else if(pidType == PID_POS) {
+//			rateSp = m_rKp * fastSqrt(abs(eP))  * eP;
+//		}
 		else {
 			rateSp = m_rKp * copysign(fastSqrt(abs(eP)),eP);
 		}
 
 		error = rateSp - rate;
-//		dError = (pos - m_lastOutput)/dT;
-//		m_lastOutput = pos;
-//		float e = 0.8*error + 0.2*m_lastError;
 		dError = (error - m_lastError)/dT;
-//		m_lastError = e;
 	}
 
 //	if(pidType == PID_THROTTLE) {
@@ -132,8 +134,6 @@ float PID::run(float pos, float rate, CNTRL_Type controlType, PID_Type pidType, 
 		m_integral += (error + m_lastError) * dT/2;
 	}
 
-
-
 	m_lastError = error;
 
 	float pid = (kpScale*m_Kp * error) + (m_Ki * m_integral) + (m_Kd * dError);
@@ -143,28 +143,23 @@ float PID::run(float pos, float rate, CNTRL_Type controlType, PID_Type pidType, 
 
 	if(pid < m_lowLimit) {
 		m_integral += m_backCalculationGain * (m_lowLimit - pid);
-//		m_integral = lastIntegral*0.98;
 		pid = m_lowLimit;
 	}
 	if(pid > m_highLimit) {
 		m_integral += m_backCalculationGain * (m_highLimit - pid);
-//		m_integral = lastIntegral*0.98;
 		pid = m_highLimit;
 	}
 
-//	m_integral -= m_backCalculationGain * (pid - _pid);
-//	m_integral -= m_Ki * (_pid - pid);
-//	m_integral -= m_Ki * (pid - _pid);
-
-//	m_lastTime = currentTime;
 	m_lastOutput = pid;
 	m_lastControlType = controlType;
 	m_lastPosition = pos;
 
+#if 0
 	if(isnan(pid)) {
 		int i = 0;
 		i++;
 	}
+#endif
 
 	return pid;
 }
