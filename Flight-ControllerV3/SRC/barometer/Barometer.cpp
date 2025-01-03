@@ -17,6 +17,7 @@ Barometer::~Barometer() {
 }
 
 bool Barometer::init(I2C_Bus* i2cBus) {
+	m_filt.init(1, 10);
 	return m_sensor.init(i2cBus);
 }
 
@@ -49,6 +50,7 @@ void Barometer::taskFunc(timetick_us currenTimeUs) {
 	m_altData = m_sensor.getContAltitude();
 #else
 	m_altData = m_sensor.getAltitude();
+	m_altData.altitude = m_filt.apply(m_altData.altitude);
 	m_osd->setOptBaroAltitude(m_altData.altitude);
 //	setTaskPeriod(m_altData.acqTimeUs);
 #endif

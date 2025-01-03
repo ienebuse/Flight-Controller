@@ -11,6 +11,7 @@
 #include <sensors/dps/DPS310.h>
 #include <Task.h>
 #include "osd/IOSD.h"
+#include <LowPassFilter.h>
 
 class Barometer : public Task{
 public:
@@ -23,6 +24,10 @@ public:
 
 	bool dataAvailable();
 
+	inline void setGroundOffset() {
+		m_groundOffset = m_altData.altitude;
+	}
+
 	inline void registerOSD(IOSD* osd) {
 		m_osd = osd;
 	}
@@ -32,7 +37,9 @@ public:
 private:
 	dps310::DPS310 m_sensor;
 	AltData m_altData;
+	float m_groundOffset;
 	IOSD* m_osd;
+	LowPassFilter m_filt;
 
 	void setTaskPeriod(timetick_us period);
 };

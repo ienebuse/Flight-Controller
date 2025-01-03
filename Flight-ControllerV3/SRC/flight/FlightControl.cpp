@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <Configurator.h>
 #include <config.h>
+#include <AltitudeFilter.h>
 
 bool FlightControl::LAND = false;
 
@@ -113,19 +114,19 @@ void FlightControl::setMotorsSpeed(float frontRight, float rearRight, float fron
 
 float FlightControl::scaleAngle(float angle, eAxis axis) {
 	float angleScale = 0;
-//	if(axis == YAW) {
-//		angleScale = ((angle + Configurator::getConfig().settings.MaxYawAngle)*200/(2*Configurator::getConfig().settings.MaxYawAngle)) - 100;
-//	}
-//	else {
-//		angleScale = ((angle + Configurator::getConfig().settings.MaxAngle)*200/(2*Configurator::getConfig().settings.MaxAngle)) - 100;
-//	}
-
 	if(axis == YAW) {
-		angleScale = ((angle + MAX_YAW_ANGLE)*200/(2*MAX_YAW_ANGLE)) - 100;
+		angleScale = ((angle + Configurator::getConfig().settings.MaxYawAngle)*200/(2*Configurator::getConfig().settings.MaxYawAngle)) - 100;
 	}
 	else {
-		angleScale = ((angle + MAX_ANGLE)*200/(2*MAX_ANGLE)) - 100;
+		angleScale = ((angle + Configurator::getConfig().settings.MaxAngle)*200/(2*Configurator::getConfig().settings.MaxAngle)) - 100;
 	}
+
+//	if(axis == YAW) {
+//		angleScale = ((angle + MAX_YAW_ANGLE)*200/(2*MAX_YAW_ANGLE)) - 100;
+//	}
+//	else {
+//		angleScale = ((angle + MAX_ANGLE)*200/(2*MAX_ANGLE)) - 100;
+//	}
 	return angleScale;
 }
 
@@ -185,12 +186,18 @@ void FlightControl::run(Attitude currentAttitude,  Channel* rxCh, timetick_us cu
 
 	static const float throttleScale = 0.001;
 	static bool firstChange = true;
+	static bool startAltFilter = false;
 
 
 	if(m_isArmed) {
 		float m1=0,m2=0,m3=0,m4=0;
 		CNTRL_Type controlType = CONTROL_POS;
 		OptFlw_Data optFlwData = m_optflw->getOptFlowData();
+
+		if(!startAltFilter && optFlwData.h >= 50) {
+			startAltFilter = true;
+			AltitudeFilter::getInstance()->start();
+		}
 
 
 		if(rxCh->SR2 > 40 || rxCh->SR1 > 40 || rxCh->pitch != 50 || rxCh->roll != 50) {
@@ -303,8 +310,6 @@ void FlightControl::run(Attitude currentAttitude,  Channel* rxCh, timetick_us cu
 			yawPid = m_pid[YAW].run(yawAngle, yawRate, CONTROL_RATE, PID_YAW, MODE_D_LOOP, dT);
 		};
 
-//		throttleVal = throttle;
-
 		if(rxCh->SL1 < 60) {
 			if(HEIGHT_CONTROL && rxCh->SR2 < 40) {
 				m_pid[THROTTLE].updateSetpoint(heightSetpoint, PID_THROTTLE);
@@ -319,6 +324,8 @@ void FlightControl::run(Attitude currentAttitude,  Channel* rxCh, timetick_us cu
 //			m_pid[THROTTLE].reset();
 //			throttlePid = 0;
 //		}
+
+
 
 		/*
 		 * 	M4				 M2
@@ -358,6 +365,9 @@ void FlightControl::run(Attitude currentAttitude,  Channel* rxCh, timetick_us cu
 		m_pidVals.yaw = yawPid;
 		m_pidVals.pos_y = rollPIDSetPoint;
 		m_pidVals.pos_x = pitchPIDSetPoint;
+	}
+	else {
+		startAltFilter = false;
 	}
 }
 

@@ -134,6 +134,8 @@ private:
 	double magMean = 0;    // Current mean
 	double magM2 = 0;
 
+	bool m_imu1Good{false}, m_imu2Good{false};
+
 #if USE_MAHONY
 	Mahony filter;
 #elif USE_MADGWICK
@@ -151,6 +153,8 @@ private:
 	void calibrateGyro();
 
 	void waitForSteadyGyro();
+
+	void checkAHRSHealth();
 
 	void setCompassRef();
 

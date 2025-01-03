@@ -27,6 +27,7 @@
 #include <sensors/dps/DPS310.h>
 #include <Buzzer.h>
 #include <osd/OSD.h>
+#include <AltitudeFilter.h>
 
 //#include <Task.h>
 
@@ -92,7 +93,7 @@ public:
 		if(buzz_state) {
 			return;
 		}
-		HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, GPIO_PIN_SET);
+//		HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, GPIO_PIN_SET);
 		buzz_state = true;
 	}
 
@@ -130,6 +131,7 @@ private:
 	Logger m_log;
 	HeartBeat m_hrtBt;
 	Configurator m_configurator;
+	AltitudeFilter altFilt;
 
 
 	OSD m_osd;

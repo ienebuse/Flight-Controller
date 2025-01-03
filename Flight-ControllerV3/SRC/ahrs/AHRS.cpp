@@ -48,13 +48,22 @@ void AHRS::calibrateGyro() {
 		Vector_t<float> gyro1 = m_imuSensor1.getGyroData();
 		Vector_t<float> gyro2 = m_imuSensor2.getGyroData();
 
-		gyro.x += (gyro1.x - gyro2.x)/2;
-		gyro.y += (gyro1.y - gyro2.y)/2;
-		gyro.z += (gyro1.z + gyro2.z)/2;
+		if(m_imu1Good && m_imu2Good) {
+			gyro.x += (gyro1.x - gyro2.x)/2;
+			gyro.y += (gyro1.y - gyro2.y)/2;
+			gyro.z += (gyro1.z + gyro2.z)/2;
+		}
+		else if(m_imu1Good) {
+			gyro.x += gyro1.x;
+			gyro.y += gyro1.y;
+			gyro.z += gyro1.z;
+		}
+		else{
+			gyro.x += gyro2.x;
+			gyro.y += gyro2.y;
+			gyro.z += gyro2.z;
+		}
 
-//		gyro.x += gyro2.x;
-//		gyro.y += gyro2.y;
-//		gyro.z += gyro2.z;
 
 		TimeTick::delay_us(1300);
 	}
@@ -118,6 +127,29 @@ void AHRS::waitForSteadyGyro() {
 	}
 }
 
+void AHRS::checkAHRSHealth() {
+	waitForSteadyGyro();
+
+	Vector_t<float> acc1 = m_imuSensor1.getAccelData();
+	Vector_t<float> acc2 = m_imuSensor2.getAccelData();
+
+	float res = acc1.x * acc1.x + acc1.y * acc1.y + acc1.z * acc1.z;
+
+	if(abs(sqrt(res) - 0.2) < 0.1) {
+		m_imu1Good = true;
+	}
+
+	res = acc2.x * acc2.x + acc2.y * acc2.y + acc2.z * acc2.z;
+
+	if(abs(sqrt(res) - 0.2) < 0.1) {
+		m_imu2Good = true;
+	}
+
+	if(!m_imu1Good && !m_imu2Good) {
+		Error_Handler();
+	}
+}
+
 void AHRS::updateVariance() {
     static int n = 0;
 
@@ -153,6 +185,7 @@ void AHRS::init(SPI_Config config1, SPI_Config config2, I2C_config mag_config) {
 
 
 //	waitForSteadyGyro();
+	checkAHRSHealth();
 	calibrateGyro();
 
 	if(Configurator::getConfig().settings.UseMagnetometer) {
@@ -183,37 +216,34 @@ void AHRS::updateSensorData() {
 	Vector_t<float> acc2 = m_imuSensor2.getAccelData();
 	Vector_t<float> gyro2 = m_imuSensor2.getGyroData();
 
-	m_sensorData.acc.x = (acc1.x - acc2.x)/NUM_ACC;
-	m_sensorData.acc.y = (acc1.y - acc2.y)/NUM_ACC;
-	m_sensorData.acc.z = (acc1.z + acc2.z)/NUM_ACC;
+	if(m_imu1Good && m_imu2Good) {
+		m_sensorData.acc.x = (acc1.x - acc2.x)/NUM_ACC;
+		m_sensorData.acc.y = (acc1.y - acc2.y)/NUM_ACC;
+		m_sensorData.acc.z = (acc1.z + acc2.z)/NUM_ACC;
+
+		m_sensorData.gyro.x = (gyro1.x - gyro2.x)/2 - gyroOffset.x;
+		m_sensorData.gyro.y = (gyro1.y - gyro2.y)/2 - gyroOffset.y;
+		m_sensorData.gyro.z = (gyro1.z + gyro2.z)/2 - gyroOffset.z;
+	}
+	else if(m_imu1Good) {
+		m_sensorData.acc.x = acc1.x;
+		m_sensorData.acc.y = acc1.y;
+		m_sensorData.acc.z = acc1.z;
 
 
-	m_sensorData.gyro.x = (gyro1.x - gyro2.x)/2 - gyroOffset.x;
-	m_sensorData.gyro.y = (gyro1.y - gyro2.y)/2 - gyroOffset.y;
-	m_sensorData.gyro.z = (gyro1.z + gyro2.z)/2 - gyroOffset.z;
-//
-//
-//
-//
-//	m_sensorData.acc.x = acc1.x;
-//	m_sensorData.acc.y = acc1.y;
-//	m_sensorData.acc.z = acc1.z;
-//
-//
-//	m_sensorData.gyro.x = gyro1.x - gyroOffset.x;
-//	m_sensorData.gyro.y = gyro1.y - gyroOffset.y;
-//	m_sensorData.gyro.z = gyro1.z - gyroOffset.z;
+		m_sensorData.gyro.x = gyro1.x - gyroOffset.x;
+		m_sensorData.gyro.y = gyro1.y - gyroOffset.y;
+		m_sensorData.gyro.z = gyro1.z - gyroOffset.z;
+	}
+	else {
+		m_sensorData.acc.x = acc2.x;
+		m_sensorData.acc.y = acc2.y;
+		m_sensorData.acc.z = acc2.z;
 
-
-
-//	m_sensorData.acc.x = acc2.x;
-//	m_sensorData.acc.y = acc2.y;
-//	m_sensorData.acc.z = acc2.z;
-//
-//
-//	m_sensorData.gyro.x = gyro2.x - gyroOffset.x;
-//	m_sensorData.gyro.y = gyro2.y - gyroOffset.y;
-//	m_sensorData.gyro.z = gyro2.z - gyroOffset.z;
+		m_sensorData.gyro.x = gyro2.x - gyroOffset.x;
+		m_sensorData.gyro.y = gyro2.y - gyroOffset.y;
+		m_sensorData.gyro.z = gyro2.z - gyroOffset.z;
+	}
 
 //	filterGyro();
 	currentTime = TimeTick::getTimeUs();

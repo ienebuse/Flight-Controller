@@ -42,6 +42,7 @@ Application::Application() :
 		m_blackBox(&m_ahrs, &m_flightControl, &m_meter, &m_gps, &m_barometer, &m_optflw),
 		m_log(&m_ahrs, &m_flightControl, &m_meter, &m_gps, &m_barometer, &m_optflw),
 		m_configurator(&m_ahrs, &m_flightControl, &m_meter, &m_gps, &m_barometer, &m_optflw, &m_blackBox),
+		altFilt(&m_barometer, &m_optflw),
 		m_osd(&m_meter)
 {
 	// TODO Auto-generated constructor stub

@@ -176,8 +176,8 @@ void OpticalFlow::init(UART_HandleTypeDef* huart, AHRS* ahrs) {
 //	yFilt.init(0.5, 50);
 //	zFilt.init(10, 50);
 
-	xFilt.init(0.5, 50);
-	yFilt.init(0.5, 50);
+	xFilt.init(0.2, 50);
+	yFilt.init(0.2, 50);
 	zFilt.init(20, 50);
 
 	HAL_UART_AbortReceive(huart);

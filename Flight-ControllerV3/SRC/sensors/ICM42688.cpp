@@ -13,6 +13,7 @@
 #include <TimeTick.h>
 #include <Configurator.h>
 #include <sensors/ICM42688.h>
+#include <string.h>
 
 static Config config;
 
@@ -163,7 +164,7 @@ Vector_t<float> ICM42688::getAccelData(void) {
 	  }
 	  else
 	  {
-	    uint8_t data[6];
+	    uint8_t data[6] = {0,0,0,0,0,0};
 	    readReg(ICM42688_ACCEL_DATA_X1, data, 6);
 	    accData.x = (int16_t)(((uint16_t)data[0] << 8) | (uint16_t)data[1]);
 	    accData.y = (int16_t)(((uint16_t)data[2] << 8) | (uint16_t)data[3]);
@@ -258,7 +259,7 @@ Vector_t<float> ICM42688::getGyroData(void) {
 	  }
 	  else
 	  {
-	    uint8_t data[6];
+	    uint8_t data[6] = {0,0,0,0,0,0};
 	    readReg(ICM42688_GYRO_DATA_X1, data, 6);
 	    gyroData.x = (int16_t)(((uint16_t)data[0] << 8) | (uint16_t)data[1]);
 	    gyroData.y = (int16_t)(((uint16_t)data[2] << 8) | (uint16_t)data[3]);

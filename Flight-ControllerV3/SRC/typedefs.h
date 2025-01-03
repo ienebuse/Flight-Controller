@@ -56,7 +56,8 @@
 #else
 	#define OPT_FLW_PERIOD_US		(uint32_t)20000
 #endif
-#define HEARTBEAT_PERIOD_US			(uint32_t)500000
+//#define HEARTBEAT_PERIOD_US			(uint32_t)500000
+#define HEARTBEAT_PERIOD_US			(uint32_t)50000
 
 #define CONFIG_CHECK_PERIOD_US		(uint32_t)100000
 #define BLACKBOX_UPDATEPERIOD_US	(uint32_t)5000

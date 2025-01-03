@@ -124,6 +124,18 @@ public:
 		return flwData;
 	}
 
+	inline float getHeight() {
+		Quat q = m_ahrs->getCurrentAttitude().quat;
+		float q02 = q.q0*q.q0;
+		float q12 = q.q1*q.q1;
+		float q22 = q.q2*q.q2;
+		float q32 = q.q3*q.q3;
+
+		float h = currentFlowData.z * (q02 - q12 - q22 + q32);
+
+		return h;
+	}
+
 	inline void resetPos() {
 		wPos.x = 0;
 		wPos.y = 0;
