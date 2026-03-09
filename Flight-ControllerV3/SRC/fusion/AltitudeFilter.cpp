@@ -37,8 +37,8 @@ float AltitudeFilter::getAltitude() {
 		alt = Alpha * ofAlt + (1 - Alpha) * baroAlt;
 	}
 
-	snprintf(buff, 64, "%.3f,%.3f,%.3f\r\n", ofAlt, baroAlt, alt);
-	Debugger::sendDbgLog(buff);
+//	snprintf(buff, 64, "%.3f,%.3f,%.3f\r\n", ofAlt, baroAlt, alt);
+//	Debugger::sendDbgLog(buff);
 
 	return alt;
 }

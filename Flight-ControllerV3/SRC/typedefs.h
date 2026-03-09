@@ -78,6 +78,7 @@
 
 #define DECENT_RATE_MMpS			(uint16_t)200
 #define THROTTLE_SENSITIVITY		(uint8_t)1
+#define MAX_CLIMB_RATE				(uint16_t)100
 
 #define USE_MADGWICK				0
 #define USE_MAHONY					0

@@ -188,10 +188,14 @@ void FlightControl::run(Attitude currentAttitude,  Channel* rxCh, timetick_us cu
 	static bool firstChange = true;
 	static bool startAltFilter = false;
 
+	static float maxClimbRate = MAX_CLIMB_RATE * heightControl_dT;
+	static float AlthThreshold = 50;
+
 
 	if(m_isArmed) {
 		float m1=0,m2=0,m3=0,m4=0;
 		CNTRL_Type controlType = CONTROL_POS;
+		CNTRL_Type altControlType = CONTROL_RATE;
 		OptFlw_Data optFlwData = m_optflw->getOptFlowData();
 
 		if(!startAltFilter && optFlwData.h >= 50) {
@@ -223,11 +227,7 @@ void FlightControl::run(Attitude currentAttitude,  Channel* rxCh, timetick_us cu
 			m_pid[THROTTLE].reset();
 		}
 
-
 		float height = getCurrentHeight(optFlwData.h);
-
-		heightRate = getCurrentHeight((optFlwData.h - lastHeight) / heightControl_dT);
-		lastHeight = optFlwData.h;
 
 
 		if((rxCh->SL1 < 40 && optFlwData.h > 150)  || Meter::batteryCritical()) {
@@ -269,8 +269,22 @@ void FlightControl::run(Attitude currentAttitude,  Channel* rxCh, timetick_us cu
 
 		bool HEIGHT_CONTROL = false;
 
-		if(currentTime - lastHeightControl > 20000) {
+		if(currentTime - lastHeightControl > OPT_FLW_PERIOD_US) {
+			if(heightSetpoint - optFlwData.h > AlthThreshold) {
+				heightRate = getCurrentHeight( maxClimbRate);
+
+				altControlType = CONTROL_RATE;
+			}
+			else {
+				heightRate = getCurrentHeight((optFlwData.h - lastHeight) * heightControl_dT);
+				altControlType = CONTROL_POS;
+				m_pid[THROTTLE].updateSetpoint(heightSetpoint, PID_THROTTLE);
+			}
+
+			heightRate = getCurrentHeight((optFlwData.h - lastHeight) * heightControl_dT);
+
 			HEIGHT_CONTROL = true;
+			lastHeight = optFlwData.h;
 			lastHeightControl = currentTime;
 		}
 
@@ -313,7 +327,8 @@ void FlightControl::run(Attitude currentAttitude,  Channel* rxCh, timetick_us cu
 		if(rxCh->SL1 < 60) {
 			if(HEIGHT_CONTROL && rxCh->SR2 < 40) {
 				m_pid[THROTTLE].updateSetpoint(heightSetpoint, PID_THROTTLE);
-				throttle = m_pid[THROTTLE].run(height, heightRate, CONTROL_POS, PID_THROTTLE, MODE_S_LOOP, heightControl_dT);
+//				throttle = m_pid[THROTTLE].run(height, heightRate, CONTROL_POS, PID_THROTTLE, MODE_S_LOOP, heightControl_dT);
+				throttle = m_pid[THROTTLE].run(height, heightRate, CONTROL_POS, PID_THROTTLE, MODE_D_LOOP, heightControl_dT);
 				throttleVal = throttle;
 				throttlePid = throttleVal;
 			}

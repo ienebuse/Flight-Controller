@@ -9,10 +9,10 @@
 #define FLIGHT_FLIGHTCONTROL_H_
 
 #include <DShot.h>
-#include <PID.h>
 #include <typedefs.h>
 #include <AHRS.h>
 #include <OpticalFlow.h>
+#include <PID.h>
 #include <scheduler/Task.h>
 #include <string.h>
 

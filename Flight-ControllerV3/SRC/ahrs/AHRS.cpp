@@ -236,12 +236,12 @@ void AHRS::updateSensorData() {
 		m_sensorData.gyro.z = gyro1.z - gyroOffset.z;
 	}
 	else {
-		m_sensorData.acc.x = acc2.x;
-		m_sensorData.acc.y = acc2.y;
+		m_sensorData.acc.x = -acc2.x;
+		m_sensorData.acc.y = -acc2.y;
 		m_sensorData.acc.z = acc2.z;
 
-		m_sensorData.gyro.x = gyro2.x - gyroOffset.x;
-		m_sensorData.gyro.y = gyro2.y - gyroOffset.y;
+		m_sensorData.gyro.x = -gyro2.x - gyroOffset.x;
+		m_sensorData.gyro.y = -gyro2.y - gyroOffset.y;
 		m_sensorData.gyro.z = gyro2.z - gyroOffset.z;
 	}
 

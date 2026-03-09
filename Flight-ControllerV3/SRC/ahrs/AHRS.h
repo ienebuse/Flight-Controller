@@ -19,6 +19,7 @@
 #include <fusion/MadgwickFilter.h>
 #include <fusion/MahonyFilter.h>
 #include <fusion/VqfFilter.h>
+#include <fusion/SMAOFilter.h>
 //#include <fusion/EKF.h>
 #include <I2CBus.h>
 #include <Task.h>
@@ -136,6 +137,8 @@ private:
 
 	bool m_imu1Good{false}, m_imu2Good{false};
 
+//	SMAO filter;
+
 #if USE_MAHONY
 	Mahony filter;
 #elif USE_MADGWICK
@@ -148,6 +151,8 @@ private:
 	EKF filter;
 #elif USE_MADGWICK_FUSION
 	MadgwickFusion filter;
+#elif USE_SMAO
+	SMAO filter;
 #endif
 
 	void calibrateGyro();

@@ -5,8 +5,8 @@
  *      Author: Ikenna
  */
 
-#include <motor/PID.h>
 #include <Configurator.h>
+#include <PID.h>
 
 PID::PID() {
 	// TODO Auto-generated constructor stub

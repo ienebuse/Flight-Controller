@@ -93,7 +93,7 @@ public:
 		if(buzz_state) {
 			return;
 		}
-//		HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, GPIO_PIN_SET);
+		HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, GPIO_PIN_SET);
 		buzz_state = true;
 	}
 

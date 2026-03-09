@@ -98,7 +98,7 @@ void Logger::log(timetick_us currenTimeUs) {
 	const uint8_t packtSize = sizeof(Log_Data) / MaxPcktSegment;
 	static timetick_us lastLogTime = 0;
 
-	if(1) {
+	if(0) {
 		if(currenTimeUs - lastLogTime > 100000 && Configurator::canSenLog()) {
 			getLogData();
 			if(Configurator::sendLog(m_logData)) {
